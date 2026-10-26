@@ -208,7 +208,12 @@ h1{font-weight:700;letter-spacing:-.025em}
 .fuelnote{display:flex;align-items:center;gap:10px;font-size:12px;color:var(--muted);margin:8px 0 0}
 .linkbtn{flex:none;font:inherit;font-size:12px;font-weight:600;border:0;background:transparent;color:var(--a1);cursor:pointer;padding:0}
 .fuelnote[hidden]{display:none}
-.steptext{margin:0;font-size:13px;line-height:1.75;color:var(--muted)}
+.steplist{list-style:none;margin:0;padding:0;font-size:13px}
+.steplist li{display:flex;justify-content:space-between;align-items:baseline;gap:12px;padding:6px 0;border-bottom:1px solid var(--line)}
+.steplist li:last-child{border-bottom:0}
+.steplist .sn{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--ink)}
+.steplist .sn i{font-style:normal;color:var(--muted);margin-left:4px}
+.steplist .ss{flex:none;color:var(--muted);font-variant-numeric:tabular-nums}
 .stt{font-weight:700}
 .stt-ok{color:var(--ok)}.stt-slow{color:var(--slow)}.stt-jam{color:var(--jam)}.stt-none{color:var(--muted)}
 .tag.ref{border-color:color-mix(in srgb,var(--slow) 55%,transparent);color:var(--slow);background:color-mix(in srgb,var(--slow) 12%,transparent)}
@@ -613,18 +618,13 @@ function stripHtml(r,pc){
   return `<div class="strip" role="img" aria-label="정체 현황: ${summary}" title="${summary}">${cells}<div class="strip-label">${parts.join("")}</div></div>`;
 }
 
-// 분기점(도로가 바뀌는 곳)마다 교통 상태와 소요시간을 이어 쓴 줄글
-const STATE_WORD={ok:["원활","해서"],slow:["서행","이라"],jam:["정체","라"],none:["정보 없음","이라"]};
-function stepsProse(r){
+// 분기점(도로가 바뀌는 곳)마다 한 줄: 왼쪽에 도로명(길이), 오른쪽에 교통 현황(상태 · 소요시간)
+const STATE_WORD={ok:"원활",slow:"서행",jam:"정체",none:"정보 없음"};
+function stepsList(r){
   const st=r&&r.steps;
   if(!st||!st.length)return"";
-  const parts=st.map((s,i)=>{
-    const [w,tail]=STATE_WORD[s.st]||STATE_WORD.none;
-    const time=s.min<1?"1분 미만":`약 ${s.min}분`;
-    const lead=i===0?"":i===st.length-1?"마지막으로 ":"이어서 ";
-    return`${lead}${esc(s.road)} ${s.km}km는 <b class="stt stt-${s.st}">${w}</b>${tail} ${time}`;
-  });
-  return`<p class="steptext">${parts.join(", ")} 걸려요.</p>`;
+  const rows=st.map(s=>`<li><span class="sn">${esc(s.road)} <i>${s.km}km</i></span><span class="ss"><b class="stt stt-${s.st}">${STATE_WORD[s.st]||STATE_WORD.none}</b> ${s.min<1?"1분 미만":`${s.min}분`}</span></li>`).join("");
+  return`<ul class="steplist" aria-label="구간별 교통 현황">${rows}</ul>`;
 }
 function card(app,r,ctx,best){
   const ref=ctx.future&&app.id==="naver"; // 네이버는 출발 시각 미지원
@@ -640,7 +640,7 @@ function card(app,r,ctx,best){
    <div class="stats"><div>거리<b>${r.dist.toFixed(1)}km</b></div><div>통행료<b>${won(r.toll)}</b></div><div>${FUELS[F.fuel].cost}<b>${won(fuel(r.dist))}</b></div></div>
    ${stripHtml(r,pc)}
    ${r.path&&r.path.length?`<div class="map" id="map-${app.id}" role="img" aria-label="${app.name} 경로 지도"></div>`:`<div class="map-off">샘플 값이라 지도는 실시간 연동 후 표시돼요</div>`}
-   ${stepsProse(r)}
+   ${stepsList(r)}
    <div class="maprow">${r.path&&r.path.length?`<button type="button" class="fitbtn" data-fit="${app.id}">경로 전체 보기</button>`:"<span></span>"}${link}</div>`;
 }
 
