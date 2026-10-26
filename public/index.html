@@ -137,8 +137,9 @@ h1{font-weight:700;letter-spacing:-.025em}
 .summary .note{text-align:left}
 .brand{display:flex;align-items:center;justify-content:center;gap:16px}
 .logo{flex:none}
-.brandtext h1{font-size:44px;line-height:1.1;text-align:left}
-.brandtext .note{text-align:left;margin:4px 0 0}
+.brand h1{font-size:44px;line-height:1.1;text-align:left}
+.brandnote{display:flex;flex-direction:column;align-items:center;text-align:center;margin:-6px 0 0}
+.brandnote span{display:block}
 .logo .sp{animation:logoSpeed .6s linear infinite}
 .logo .bob{animation:logoBob .5s ease-in-out infinite}
 .logo .wheel{transform-box:fill-box;transform-origin:center;animation:logoSpin .45s linear infinite}
@@ -260,11 +261,9 @@ h1{font-weight:700;letter-spacing:-.025em}
         <circle cx="52" cy="37" r="6.5" fill="#0a3d7a"/><g class="wheel"><circle cx="52" cy="37" r="3" fill="#fff"/><line x1="52" y1="34" x2="52" y2="40" stroke="#0a3d7a" stroke-width="1.4"/></g>
       </g>
     </svg>
-    <div class="brandtext">
-      <h1>빨리가유</h1>
-      <p class="note" id="statusNote">실시간 네비게이션 비교분석<br>(네이버, 카카오, 티맵)</p>
-    </div>
+    <h1>빨리가유</h1>
   </header>
+  <p class="note brandnote" id="statusNote"><span>실시간 네비게이션 비교분석</span><span>(네이버, 카카오, 티맵)</span></p>
 
   <form class="sign" id="form" autocomplete="off">
     <div class="f-start"><label for="start">출발</label><div class="acwrap"><input id="start" value="킨텍스" required role="combobox" aria-autocomplete="list" aria-controls="ac-start" aria-expanded="false"><span class="addr" aria-hidden="true"></span><button type="button" class="locbtn" data-for="start" aria-label="출발을 내 위치로 입력" title="내 위치"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="7"/><circle cx="12" cy="12" r="2.5" fill="currentColor" stroke="none"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg></button><ul class="ac" id="ac-start" role="listbox" hidden></ul></div></div>
