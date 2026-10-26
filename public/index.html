@@ -94,6 +94,10 @@ h1{font-size:40px;font-weight:800;margin:0;text-align:center;text-wrap:balance;l
 .map{height:220px;border-radius:8px;overflow:hidden;border:1px solid var(--line);background:var(--line);z-index:0}
 .map-off{display:flex;align-items:center;justify-content:center;height:220px;border-radius:8px;border:1px dashed var(--line);font-size:13px;color:var(--muted);text-align:center;padding:0 12px}
 .open{font-size:13px;color:var(--a1);text-decoration:none;margin-top:auto;align-self:flex-end}
+.maprow{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:auto}
+.maprow .open{margin-top:0;align-self:auto}
+.fitbtn{font:inherit;font-size:13px;font-weight:500;border:0;background:transparent;color:var(--a1);cursor:pointer;padding:4px 0}
+.fitbtn:hover{text-decoration:underline}
 .open.off{color:var(--muted)}
 .fuelbox{margin-top:12px;border:1px solid var(--line);border-radius:10px;background:var(--surface);padding:10px 14px}
 .fuelbox summary{cursor:pointer;font-size:14px;font-weight:600}
@@ -445,7 +449,7 @@ function card(app,r,ctx,best){
    <div class="stats"><div>거리<b>${r.dist.toFixed(1)}km</b></div><div>통행료<b>${won(r.toll)}</b></div><div>${FUELS[F.fuel].cost}<b>${won(fuel(r.dist))}</b></div></div>
    ${stripHtml(r,pc)}
    ${r.path&&r.path.length?`<div class="map" id="map-${app.id}" role="img" aria-label="${app.name} 경로 지도"></div>`:`<div class="map-off">샘플 값이라 지도는 실시간 연동 후 표시돼요</div>`}
-   ${link}`;
+   <div class="maprow">${r.path&&r.path.length?`<button type="button" class="fitbtn" data-fit="${app.id}">경로 전체 보기</button>`:"<span></span>"}${link}</div>`;
 }
 
 // ---- 경로 지도: 앱별 지도 SDK(public/maps.js), 실패하면 OpenStreetMap으로 대체 ----
@@ -616,6 +620,7 @@ document.querySelectorAll(".tab").forEach(b=>b.addEventListener("click",()=>{
   document.querySelectorAll(".tab").forEach(t=>{const on=t===b;t.classList.toggle("on",on);t.setAttribute("aria-selected",on)});
   run();
 }));
+$("grid").addEventListener("click",ev=>{const b=ev.target.closest(".fitbtn");if(b)RouteMaps.fit(b.dataset.fit)});
 $("tMinus").addEventListener("click",()=>{shiftTime(-30);run()});
 $("tPlus").addEventListener("click",()=>{shiftTime(30);run()});
 $("tMinus60").addEventListener("click",()=>{shiftTime(-60);run()});

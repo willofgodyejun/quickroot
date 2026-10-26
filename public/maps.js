@@ -4,6 +4,9 @@ const RouteMaps = (() => {
   let cfg = {};
   const loaded = {};
   const leaflets = [];
+  const fits = {};      // 지도 id → 경로 전체 보기 함수
+  const maps = {};      // 지도 id → SDK 지도 객체
+  const observers = [];
 
   function loadScript(src) {
     if (!loaded[src]) {
@@ -20,6 +23,30 @@ const RouteMaps = (() => {
   }
 
   const flat = (path) => path.flatMap((s) => s.pts);
+
+  // 경로 전체가 한눈에 들어오도록 범위를 넉넉히 잡는다 → [남서, 북동] 모서리.
+  // 마커 핀은 좌표 위쪽으로 솟아 있어서 위쪽 여백을 더 크게 둔다. 아주 짧은 경로는 지나치게 확대되지 않게 최소 범위를 둔다
+  function paddedCorners(pts) {
+    let minLat = Infinity, maxLat = -Infinity, minLng = Infinity, maxLng = -Infinity;
+    for (const [lat, lng] of pts) {
+      if (lat < minLat) minLat = lat;
+      if (lat > maxLat) maxLat = lat;
+      if (lng < minLng) minLng = lng;
+      if (lng > maxLng) maxLng = lng;
+    }
+    const dLat = Math.max(maxLat - minLat, 0.004);
+    const dLng = Math.max(maxLng - minLng, 0.004);
+    return [[minLat - dLat * 0.12, minLng - dLng * 0.1], [maxLat + dLat * 0.25, maxLng + dLng * 0.1]];
+  }
+
+  // 지도 칸 크기가 바뀌면(창 크기 변경, 레이아웃 변경) 경로 전체가 다시 보이게 맞춘다
+  function watchResize(el, fit) {
+    if (typeof ResizeObserver === "undefined") return;
+    let timer = null;
+    const ro = new ResizeObserver(() => { clearTimeout(timer); timer = setTimeout(fit, 150); });
+    ro.observe(el);
+    observers.push(ro);
+  }
   const timeout = (ms, msg) => new Promise((_, rej) => setTimeout(() => rej(new Error(msg)), ms));
 
   // ---- 네이버 (Maps JS API v3: ncpKeyId = Client ID, 'Web Dynamic Map' 이용 신청 + 서비스 URL 등록 필요) ----
@@ -38,11 +65,16 @@ const RouteMaps = (() => {
       new naver.maps.Polyline({ map, path: pts, strokeColor: colors[seg.st], strokeWeight: 6, strokeOpacity: 1 });
     });
     const pts = flat(path);
+    const rawPts = pts;
     new naver.maps.Marker({ map, position: ll(pts[0]), title: "출발" });
     new naver.maps.Marker({ map, position: ll(pts[pts.length - 1]), title: "도착" });
-    const fit = () => map.fitBounds(bounds, { top: 16, right: 16, bottom: 16, left: 16 });
+    const [sw, ne] = paddedCorners(rawPts);
+    bounds.extend(ll(sw));
+    bounds.extend(ll(ne));
+    const fit = () => map.fitBounds(bounds, { top: 8, right: 8, bottom: 8, left: 8 });
     fit();
     setTimeout(fit, 400);
+    fits[el.id] = fit; maps[el.id] = map; watchResize(el, fit);
     await new Promise((r) => setTimeout(r, 1500)); // 인증 결과는 지도 생성 직후 비동기로 온다
     // 인증이 거절되면 콜백이 오거나, SDK가 지도 자리에 오류 문구를 그려 넣는다
     const failed = naverAuthError || (/인증이 실패|인증 실패|Open API/.test(el.textContent) ? new Error("네이버 지도 인증 실패 (콘솔에서 Dynamic Map 이용 신청·서비스 URL 확인)") : null);
@@ -68,9 +100,13 @@ const RouteMaps = (() => {
     new kakao.maps.Marker({ map, position: ll(pts[0]), title: "출발" });
     new kakao.maps.Marker({ map, position: ll(pts[pts.length - 1]), title: "도착" });
     // 지도 크기가 잡힌 뒤에 맞춰야 경로 전체가 보인다
-    const fit = () => { map.relayout(); map.setBounds(bounds, 16, 16, 16, 16); };
+    const [sw, ne] = paddedCorners(pts);
+    bounds.extend(ll(sw));
+    bounds.extend(ll(ne));
+    const fit = () => { map.relayout(); map.setBounds(bounds, 8, 8, 8, 8); };
     fit();
     setTimeout(fit, 400);
+    fits[el.id] = fit; maps[el.id] = map; watchResize(el, fit);
   }
 
   // ---- 티맵 (Tmapv2 지도 SDK: appKey, 지도 API 이용 신청 필요) ----
@@ -94,9 +130,13 @@ const RouteMaps = (() => {
     new Tmapv2.Marker({ position: ll(pts[0]), map, title: "출발" });
     new Tmapv2.Marker({ position: ll(pts[pts.length - 1]), map, title: "도착" });
     // 지도 크기가 잡힌 뒤에 맞춰야 경로 전체가 보인다
+    const [sw, ne] = paddedCorners(pts);
+    bounds.extend(ll(sw));
+    bounds.extend(ll(ne));
     const fit = () => { map.fitBounds(bounds); };
     fit();
     setTimeout(fit, 400);
+    fits[el.id] = fit; maps[el.id] = map; watchResize(el, fit);
   }
 
   // ---- 대체: Leaflet + OpenStreetMap ----
@@ -112,7 +152,10 @@ const RouteMaps = (() => {
     });
     L.circleMarker(all[0], { radius: 7, color: "#fff", weight: 2, fillColor: "#1c6cb3", fillOpacity: 1 }).addTo(map).bindTooltip("출발");
     L.circleMarker(all[all.length - 1], { radius: 7, color: "#fff", weight: 2, fillColor: "#d93a2f", fillOpacity: 1 }).addTo(map).bindTooltip("도착");
-    map.fitBounds(L.latLngBounds(all), { padding: [16, 16] });
+    const [sw, ne] = paddedCorners(all);
+    const fit = () => { map.invalidateSize(); map.fitBounds(L.latLngBounds([sw, ne]), { padding: [8, 8] }); };
+    fit();
+    fits[el.id] = fit; maps[el.id] = map; watchResize(el, fit);
     leaflets.push(map);
   }
 
@@ -120,7 +163,15 @@ const RouteMaps = (() => {
 
   return {
     init(config) { cfg = config || {}; },
-    reset() { leaflets.splice(0).forEach((m) => m.remove()); },
+    reset() {
+      leaflets.splice(0).forEach((m) => m.remove());
+      observers.splice(0).forEach((o) => o.disconnect());
+      for (const k of Object.keys(fits)) delete fits[k];
+      for (const k of Object.keys(maps)) delete maps[k];
+    },
+    // 경로 전체 보기: 사용자가 확대·이동한 뒤 처음 배율로 되돌린다 (appId 없으면 전부)
+    fit(appId) { (appId ? [appId] : Object.keys(fits).map((k) => k.replace(/^map-/, ""))).forEach((id) => fits["map-" + id]?.()); },
+    instance(appId) { return maps["map-" + appId]; },
     // 앱 자체 지도로 그리고 { fallback, reason }을 돌려줌. 실패하면 Leaflet으로 대체
     async draw(appId, el, path, colors, names) {
       const render = renderers[appId];
