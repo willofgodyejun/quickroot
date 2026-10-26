@@ -1,9 +1,10 @@
 <!doctype html>
-<html lang="ko">
+<html lang="ko" data-theme="cyber">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>빨리가유</title>
+<script>(()=>{try{const q=new URLSearchParams(location.search).get("theme");if(q==="apple"||q==="cyber")localStorage.setItem("theme",q);document.documentElement.dataset.theme=localStorage.getItem("theme")==="apple"?"apple":"cyber"}catch(_){}})()</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;700&display=swap">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css">
@@ -222,6 +223,74 @@ h1{font-weight:700;letter-spacing:-.025em}
 .timebtn{background:var(--well);box-shadow:var(--well-shadow)}
 .timebtn:focus-visible,.timebtn[aria-expanded="true"]{background:var(--surface);box-shadow:var(--well-shadow),0 0 0 4px color-mix(in srgb,var(--a1) 22%,transparent)}
 .acwrap input:focus,.fuelgrid input:focus,.fuelgrid select:focus{background:var(--surface);border-color:var(--a1);box-shadow:var(--well-shadow),0 0 0 4px color-mix(in srgb,var(--a1) 22%,transparent)}
+/* ---- 사이버펑크 테마 (기본). 주소 뒤에 ?theme=apple 을 붙이면 이전 애플 스타일로 전환 ---- */
+:root[data-theme="cyber"]{
+  --bg:#07040f; --surface:#0e0a1f; --ink:#e8f6ff; --muted:#8f8bb8; --line:#2c2358;
+  --field:#130d2e; --seg-on:#1b1440;
+  --well:#0a0719; --well-shadow:inset 0 2px 6px rgba(0,0,0,.85),inset 0 0 0 1px rgba(0,240,255,.2);
+  --shadow:0 0 0 1px rgba(0,240,255,.3),0 0 26px rgba(0,240,255,.1),0 0 60px rgba(255,43,214,.06);
+  --sign:#0e0a1f; --sign-ink:#e8f6ff;
+  --ok:#39ff88; --slow:#ffb800; --jam:#ff2e63; --none:#4b4670;
+  --a1:#00f0ff; --a2:#ff2bd6; --a3:#fcee09; --err:#ff5c8a;
+  color-scheme:dark}
+[data-theme="cyber"] body{background-color:var(--bg);
+  background-image:linear-gradient(rgba(0,240,255,.05) 1px,transparent 1px),linear-gradient(90deg,rgba(255,43,214,.045) 1px,transparent 1px);
+  background-size:44px 44px;background-attachment:fixed}
+[data-theme="cyber"] body::after{content:"";position:fixed;inset:0;pointer-events:none;z-index:9999;
+  background:repeating-linear-gradient(0deg,rgba(255,255,255,.028) 0 1px,transparent 1px 3px)}
+/* 제목: 네온 글로우 + 색수차 */
+[data-theme="cyber"] .brand h1{color:#fff;letter-spacing:.02em;
+  text-shadow:0 0 8px rgba(0,240,255,.9),0 0 22px rgba(0,240,255,.5),2px 0 0 rgba(255,43,214,.75),-2px 0 0 rgba(0,240,255,.45)}
+[data-theme="cyber"] .brandnote{color:#7fe9ff;letter-spacing:.12em;font-size:12px;text-transform:none;text-shadow:0 0 8px rgba(0,240,255,.45)}
+[data-theme="cyber"] .logo{filter:drop-shadow(0 0 8px rgba(0,240,255,.75)) drop-shadow(0 0 18px rgba(255,43,214,.35))}
+[data-theme="cyber"] .logo rect:first-child{fill:#10082c;stroke:#00f0ff;stroke-width:2}
+[data-theme="cyber"] .logo path[fill="#0071e3"]{fill:#00f0ff}
+[data-theme="cyber"] .logo line[stroke="#fff"]{stroke:#ff2bd6}
+/* 카드·입력 영역: 얇은 네온 테두리 + 은은한 글로우, 각진 모서리 */
+[data-theme="cyber"] .sign,[data-theme="cyber"] .card{border:1px solid rgba(0,240,255,.35);border-radius:6px;box-shadow:var(--shadow)}
+[data-theme="cyber"] .card.best{border-color:var(--ok);box-shadow:0 0 0 1px var(--ok),0 0 28px rgba(57,255,136,.35)}
+[data-theme="cyber"] .sign label,[data-theme="cyber"] .fuelgrid label{color:#a99bff;letter-spacing:.06em;font-size:12px}
+[data-theme="cyber"] .acwrap input,[data-theme="cyber"] .fuelgrid input,[data-theme="cyber"] .fuelgrid select,[data-theme="cyber"] .timebtn{border:1px solid rgba(0,240,255,.28);border-radius:4px;color:var(--ink)}
+[data-theme="cyber"] .acwrap input:focus,[data-theme="cyber"] .fuelgrid input:focus,[data-theme="cyber"] .fuelgrid select:focus,[data-theme="cyber"] .timebtn:focus-visible,[data-theme="cyber"] .timebtn[aria-expanded="true"]{
+  background:#0e0a1f;border-color:#00f0ff;box-shadow:0 0 0 1px #00f0ff,0 0 14px rgba(0,240,255,.55)}
+[data-theme="cyber"] .acwrap .addr{color:#8f8bb8}
+[data-theme="cyber"] .locbtn{color:#00f0ff;border-radius:4px}
+[data-theme="cyber"] .locbtn:hover{background:rgba(0,240,255,.14)}
+[data-theme="cyber"] .swap{border-radius:4px;background:#130d2e;color:#ff2bd6;box-shadow:0 0 0 1px rgba(255,43,214,.55),0 0 12px rgba(255,43,214,.35)}
+[data-theme="cyber"] .swap:hover{background:#1b1440}
+/* 분할 컨트롤(탭·토글): 선택된 쪽이 네온 사이언으로 빛남 */
+[data-theme="cyber"] .tabs,[data-theme="cyber"] .when{border-radius:6px;border:1px solid rgba(0,240,255,.22)}
+[data-theme="cyber"] .tab,[data-theme="cyber"] .wbtn{border-radius:4px;color:#a99bff;letter-spacing:.04em}
+[data-theme="cyber"] .tab.on,[data-theme="cyber"] .wbtn.on{background:#1b1440;color:#00f0ff;
+  box-shadow:0 0 0 1px #00f0ff,0 0 14px rgba(0,240,255,.45);text-shadow:0 0 8px rgba(0,240,255,.8)}
+[data-theme="cyber"] .sign .step{background:#130d2e;color:#ff2bd6;border-radius:4px;box-shadow:0 0 0 1px rgba(255,43,214,.4)}
+[data-theme="cyber"] .sign .step:hover{background:#1b1440;box-shadow:0 0 0 1px #ff2bd6,0 0 10px rgba(255,43,214,.45)}
+/* 주 버튼: 사이버펑크 옐로 */
+[data-theme="cyber"] .go{background:#fcee09;color:#0a0a12;border-radius:4px;font-weight:700;letter-spacing:.08em;
+  box-shadow:0 0 0 1px #fcee09,0 0 22px rgba(252,238,9,.5)}
+[data-theme="cyber"] .go:hover:not(:disabled){filter:brightness(1.08);box-shadow:0 0 0 1px #fcee09,0 0 30px rgba(252,238,9,.75)}
+/* 팝업(자동완성, 시각 선택) */
+[data-theme="cyber"] .ac,[data-theme="cyber"] .tpop{background:#0e0a1f;color:var(--ink);border-radius:6px;box-shadow:0 0 0 1px rgba(0,240,255,.45),0 0 26px rgba(0,240,255,.2),0 12px 40px rgba(0,0,0,.7)}
+[data-theme="cyber"] .ac li.on,[data-theme="cyber"] .ac li:hover{background:#1b1440}
+[data-theme="cyber"] .tpop .ampm button{background:#130d2e;color:#a99bff;border-radius:4px}
+[data-theme="cyber"] .tpop .ampm button.on{background:#00f0ff;color:#07040f}
+[data-theme="cyber"] .tpop .hm input{background:#0a0719;border-color:rgba(0,240,255,.3);border-radius:4px}
+[data-theme="cyber"] .tpop .tpok{background:#fcee09;color:#0a0a12;border-radius:4px}
+/* 요약·카드 구성요소 */
+[data-theme="cyber"] .sum-route{color:#8f8bb8}
+[data-theme="cyber"] .best-name{border-radius:4px;box-shadow:0 0 18px currentColor;color:#07040f}
+[data-theme="cyber"] .best-name.best-kakao{background:#fcee09;box-shadow:0 0 20px rgba(252,238,9,.6)}
+[data-theme="cyber"] .best-name.best-naver{background:#39ff88;color:#04140a;box-shadow:0 0 20px rgba(57,255,136,.6)}
+[data-theme="cyber"] .best-name.best-tmap{background:#00f0ff;color:#031418;box-shadow:0 0 20px rgba(0,240,255,.6)}
+[data-theme="cyber"] .tag.live{background:rgba(57,255,136,.12);color:#39ff88;border:1px solid rgba(57,255,136,.45)}
+[data-theme="cyber"] .pill{background:#39ff88;color:#04140a;border-radius:4px;box-shadow:0 0 12px rgba(57,255,136,.55)}
+[data-theme="cyber"] .eta{color:#fff;text-shadow:0 0 10px rgba(0,240,255,.5)}
+[data-theme="cyber"] .strip{border-radius:3px;box-shadow:0 0 0 1px rgba(0,240,255,.25)}
+[data-theme="cyber"] .strip-label b{background:rgba(7,4,15,.82);border:1px solid rgba(0,240,255,.35)}
+[data-theme="cyber"] .map{border-radius:4px;box-shadow:0 0 0 1px rgba(0,240,255,.45),0 0 16px rgba(0,240,255,.18)}
+[data-theme="cyber"] .open,[data-theme="cyber"] .fitbtn,[data-theme="cyber"] .linkbtn{color:#00f0ff}
+[data-theme="cyber"] .legend,[data-theme="cyber"] .foot{color:#8f8bb8}
+@media (prefers-reduced-motion:reduce){[data-theme="cyber"] body::after{display:none}}
 @media (max-width:820px){
   /* 출발·도착 칸의 라벨과 입력을 격자 칸으로 풀어서, 바꾸기 버튼이 두 입력 사이 정중앙(가로·세로)에 오게 한다.
      3행: 가운데에 바꾸기 버튼, 왼쪽에 "도착" 라벨 */
