@@ -1,5 +1,6 @@
-// 길찾기 3사 비교 — 로컬 서버
+// 길찾기 3사 비교 서버
 // API 키는 이 서버에만 두고, 브라우저는 /api/* 만 호출합니다.
+// 기본은 내 컴퓨터에서만 접속(127.0.0.1). 주소로 공유할 때는 APP_PASSWORD와 일일 호출 상한을 꼭 설정하세요(README 참고).
 import http from "node:http";
 import { readFile } from "node:fs/promises";
 import { existsSync, readFileSync } from "node:fs";
@@ -9,6 +10,7 @@ import { searchPlace, searchPlaces, reverseGeocode, getRoute } from "./lib/kakao
 import { getRoute as getNaverRoute } from "./lib/naver.js";
 import { getRoute as getTmapRoute } from "./lib/tmap.js";
 import { DEFAULT_PRICES, fetchAverages } from "./lib/opinet.js";
+import { createDailyLimiter, createRateLimiter, passwordOk, clientIp, positiveInt } from "./lib/guard.js";
 
 const ROOT = path.dirname(fileURLToPath(import.meta.url));
 
@@ -21,6 +23,10 @@ if (existsSync(envPath)) {
   }
 }
 const PORT = Number(process.env.PORT) || 3000;
+// 기본은 로컬 전용. 배포 서비스에서는 HOST=0.0.0.0 으로 열고 APP_PASSWORD를 함께 설정
+const HOST = process.env.HOST || "127.0.0.1";
+const APP_PASSWORD = process.env.APP_PASSWORD || "";
+const TRUST_PROXY = process.env.TRUST_PROXY === "1"; // 프록시(배포 서비스) 뒤에서 실제 접속자 IP를 쓰려면 1
 const KAKAO_KEY = process.env.KAKAO_REST_API_KEY || "";
 const NAVER_ID = process.env.NAVER_CLIENT_ID || "";
 const NAVER_SECRET = process.env.NAVER_CLIENT_SECRET || "";
@@ -48,16 +54,37 @@ async function fuelPrices() {
   return fuelCache.data;
 }
 
+// 일일 호출 상한(KST 자정에 초기화). 외부 API 호출 직전에 센다. 넘으면 429
+// route:*  — 앱별 길찾기 호출, search — 카카오 장소 검색·자동완성·좌표→주소
+const LIMITS = {
+  "route:kakao": positiveInt(process.env.DAILY_LIMIT_ROUTE, 1500),
+  "route:naver": positiveInt(process.env.DAILY_LIMIT_ROUTE, 1500),
+  "route:tmap": positiveInt(process.env.DAILY_LIMIT_ROUTE, 1500),
+  search: positiveInt(process.env.DAILY_LIMIT_SEARCH, 3000),
+};
+const daily = createDailyLimiter(LIMITS);
+const apiRate = createRateLimiter({ max: positiveInt(process.env.RATE_LIMIT_PER_MIN, 120), windowMs: 60_000 });
+const authFail = createRateLimiter({ max: 10, windowMs: 10 * 60_000 }); // 비밀번호 10번 틀리면 10분간 잠금
+function spend(name) {
+  if (daily.take(name)) return;
+  const err = new Error("오늘 사용 한도에 도달했어요. 내일 다시 이용해 주세요.");
+  err.status = 429;
+  throw err;
+}
+
+const PLACE_CACHE_MAX = 500;
 const placeCache = new Map();
 async function place(q) {
   const key = q.trim();
   if (placeCache.has(key)) return placeCache.get(key);
+  spend("search");
   const p = await searchPlace(key, KAKAO_KEY);
   if (!p) {
     const err = new Error(`'${key}'을(를) 찾지 못했어요. 장소 이름을 더 구체적으로 적어 주세요.`);
     err.status = 404;
     throw err;
   }
+  if (placeCache.size >= PLACE_CACHE_MAX) placeCache.delete(placeCache.keys().next().value); // 가장 오래된 것부터 버림
   placeCache.set(key, p);
   return p;
 }
@@ -83,7 +110,21 @@ function json(res, status, data) {
 
 const server = http.createServer(async (req, res) => {
   const url = new URL(req.url, `http://${req.headers.host}`);
+  const ip = clientIp(req, TRUST_PROXY);
   try {
+    // 1) 접속 비밀번호 (APP_PASSWORD를 설정했을 때). 연속으로 틀리면 잠근다
+    if (APP_PASSWORD) {
+      if (authFail.blocked(ip)) return json(res, 429, { error: "비밀번호를 너무 많이 틀렸어요. 10분 뒤에 다시 시도해 주세요." });
+      if (!passwordOk(req.headers.authorization, APP_PASSWORD)) {
+        authFail.hit(ip);
+        res.writeHead(401, { "WWW-Authenticate": 'Basic realm="ppalligayu", charset="UTF-8"', "Content-Type": "text/plain; charset=utf-8" });
+        return res.end("인증이 필요해요");
+      }
+    }
+    // 2) IP별 분당 요청 제한 (API만)
+    if (url.pathname.startsWith("/api/") && !apiRate.hit(ip)) {
+      return json(res, 429, { error: "요청이 너무 많아요. 잠시 후 다시 시도해 주세요." });
+    }
     if (url.pathname === "/api/status") {
       return json(res, 200, { kakao: Boolean(KAKAO_KEY), naver: NAVER_ON, tmap: TMAP_ON });
     }
@@ -92,12 +133,14 @@ const server = http.createServer(async (req, res) => {
       const x = Number(url.searchParams.get("x"));
       const y = Number(url.searchParams.get("y"));
       if (!(x > 120 && x < 135 && y > 30 && y < 40)) return json(res, 400, { error: "한국 안의 좌표만 조회할 수 있어요" });
+      spend("search");
       return json(res, 200, { address: await reverseGeocode(x, y, KAKAO_KEY) });
     }
     if (url.pathname === "/api/places") {
       if (!KAKAO_KEY) return json(res, 503, { error: "KAKAO_REST_API_KEY가 설정되지 않았어요 (.env 확인)" });
       const q = (url.searchParams.get("q") || "").trim().slice(0, 50);
       if (!q) return json(res, 200, { places: [] });
+      spend("search");
       return json(res, 200, { places: await searchPlaces(q, KAKAO_KEY) });
     }
     if (url.pathname === "/api/config") {
@@ -116,6 +159,7 @@ const server = http.createServer(async (req, res) => {
       if (!from || !to) return json(res, 400, { error: "출발지와 도착지를 모두 입력해 주세요" });
       if (departure !== "now" && !/^\d{12}$/.test(departure)) return json(res, 400, { error: "출발 시각 형식이 잘못됐어요" });
       const [o, d] = await Promise.all([resolvePlace(url, "from", from), resolvePlace(url, "to", to)]);
+      spend("route:tmap");
       const route = await getTmapRoute(o, d, departure, TMAP_KEY, modeOf(url));
       return json(res, 200, { origin: o, destination: d, route });
     }
@@ -125,6 +169,7 @@ const server = http.createServer(async (req, res) => {
       const to = url.searchParams.get("to") || "";
       if (!from || !to) return json(res, 400, { error: "출발지와 도착지를 모두 입력해 주세요" });
       const [o, d] = await Promise.all([resolvePlace(url, "from", from), resolvePlace(url, "to", to)]);
+      spend("route:naver");
       const route = await getNaverRoute(o, d, NAVER_ID, NAVER_SECRET, modeOf(url));
       return json(res, 200, { origin: o, destination: d, route });
     }
@@ -136,6 +181,7 @@ const server = http.createServer(async (req, res) => {
       if (!from || !to) return json(res, 400, { error: "출발지와 도착지를 모두 입력해 주세요" });
       if (departure !== "now" && !/^\d{12}$/.test(departure)) return json(res, 400, { error: "출발 시각 형식이 잘못됐어요" });
       const [o, d] = await Promise.all([resolvePlace(url, "from", from), resolvePlace(url, "to", to)]);
+      spend("route:kakao");
       const route = await getRoute(o, d, departure, KAKAO_KEY, modeOf(url));
       return json(res, 200, { origin: o, destination: d, route });
     }
@@ -153,9 +199,14 @@ const server = http.createServer(async (req, res) => {
   }
 });
 
-server.listen(PORT, () => {
-  console.log(`http://localhost:${PORT} 에서 실행 중`);
+server.listen(PORT, HOST, () => {
+  console.log(`http://localhost:${PORT} 에서 실행 중 (바인딩 ${HOST})`);
   console.log(`카카오 키: ${KAKAO_KEY ? "설정됨" : "없음 (시뮬레이션으로 표시)"}`);
   console.log(`네이버 키: ${NAVER_ON ? "설정됨" : "없음 (시뮬레이션으로 표시)"}`);
   console.log(`티맵 키: ${TMAP_ON ? "설정됨" : "없음 (시뮬레이션으로 표시)"}`);
+  console.log(`접속 비밀번호: ${APP_PASSWORD ? "사용" : "없음"} · 일일 상한: 길찾기 앱별 ${LIMITS["route:kakao"]}회, 검색 ${LIMITS.search}회 · IP당 분당 ${apiRate ? positiveInt(process.env.RATE_LIMIT_PER_MIN, 120) : ""}회`);
+  const loopback = ["127.0.0.1", "localhost", "::1"].includes(HOST);
+  if (!loopback && !APP_PASSWORD) {
+    console.warn("⚠ 외부에서 접속할 수 있는데 APP_PASSWORD가 없어요. 접속한 누구나 API 쿼터를 쓸 수 있습니다. .env에 APP_PASSWORD를 설정하세요.");
+  }
 });
