@@ -1,0 +1,12 @@
+{
+  "name": "navi-compare",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "네이버지도·카카오맵·티맵 길찾기 비교",
+  "engines": { "node": ">=18" },
+  "scripts": {
+    "start": "node server.js",
+    "test": "node --test"
+  }
+}
