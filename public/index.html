@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>QUICKROOT ver.1</title>
+<title>QUICKROOT</title>
 <script>(()=>{try{const q=new URLSearchParams(location.search).get("theme");if(q==="apple"||q==="cyber")localStorage.setItem("theme",q);document.documentElement.dataset.theme=localStorage.getItem("theme")==="apple"?"apple":"cyber"}catch(_){}})()</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;700&display=swap">
@@ -140,10 +140,8 @@ h1{font-weight:700;letter-spacing:-.025em}
 .summary .note{text-align:left}
 .brand{display:flex;align-items:center;justify-content:center;gap:16px}
 .logo{flex:none}
-.brand h1{display:flex;flex-direction:column;align-items:flex-start;font-size:36px;line-height:1.05;text-align:left;letter-spacing:.03em}
-.brand .ver{margin-top:4px;font-size:13px;font-weight:600;letter-spacing:.16em;color:var(--a1);text-shadow:none}
-.brandnote{display:flex;flex-direction:column;align-items:center;text-align:center;margin:-6px 0 0}
-.brandnote span{display:block}
+.brand h1{font-size:40px;line-height:1.05;text-align:left;letter-spacing:.03em}
+.brandnote{text-align:center;margin:-6px 0 0;font-size:15px;font-weight:600;letter-spacing:.12em}
 .logo .sp{animation:logoSpeed .6s linear infinite}
 .logo .bob{animation:logoBob .5s ease-in-out infinite}
 .logo .wheel{transform-box:fill-box;transform-origin:center;animation:logoSpin .45s linear infinite}
@@ -240,10 +238,9 @@ h1{font-weight:700;letter-spacing:-.025em}
 [data-theme="cyber"] body::after{content:"";position:fixed;inset:0;pointer-events:none;z-index:9999;
   background:repeating-linear-gradient(0deg,rgba(255,255,255,.028) 0 1px,transparent 1px 3px)}
 /* 제목: 네온 글로우 + 색수차 */
-[data-theme="cyber"] .brand .ver{color:#ff2bd6;text-shadow:0 0 8px rgba(255,43,214,.85)}
 [data-theme="cyber"] .brand h1{color:#fff;letter-spacing:.03em;
   text-shadow:0 0 8px rgba(0,240,255,.9),0 0 22px rgba(0,240,255,.5),2px 0 0 rgba(255,43,214,.75),-2px 0 0 rgba(0,240,255,.45)}
-[data-theme="cyber"] .brandnote{color:#7fe9ff;letter-spacing:.12em;font-size:12px;text-transform:none;text-shadow:0 0 8px rgba(0,240,255,.45)}
+[data-theme="cyber"] .brandnote{color:#fff;font-size:15px;font-weight:700;letter-spacing:.18em;text-shadow:0 0 6px rgba(0,240,255,.85),0 0 16px rgba(0,240,255,.45),1.5px 0 0 rgba(255,43,214,.7),-1.5px 0 0 rgba(0,240,255,.4)}
 [data-theme="cyber"] .logo{filter:drop-shadow(0 0 8px rgba(0,240,255,.75)) drop-shadow(0 0 18px rgba(255,43,214,.35))}
 [data-theme="cyber"] .logo rect:first-child{fill:#10082c;stroke:#00f0ff;stroke-width:2}
 [data-theme="cyber"] .logo path[fill="#0071e3"]{fill:#00f0ff}
@@ -338,9 +335,9 @@ h1{font-weight:700;letter-spacing:-.025em}
         <circle cx="52" cy="37" r="6.5" fill="#0a3d7a"/><g class="wheel"><circle cx="52" cy="37" r="3" fill="#fff"/><line x1="52" y1="34" x2="52" y2="40" stroke="#0a3d7a" stroke-width="1.4"/></g>
       </g>
     </svg>
-    <h1>QUICKROOT<span class="ver">ver.1</span></h1>
+    <h1>QUICKROOT</h1>
   </header>
-  <p class="note brandnote" id="statusNote"><span>실시간 네비게이션 비교분석</span><span>(네이버, 카카오, 티맵)</span></p>
+  <p class="note brandnote" id="statusNote">실시간 네비게이션 비교분석</p>
 
   <form class="sign" id="form" autocomplete="off">
     <div class="f-start"><label for="start">출발</label><div class="acwrap"><input id="start" value="킨텍스" required role="combobox" aria-autocomplete="list" aria-controls="ac-start" aria-expanded="false"><span class="addr" aria-hidden="true"></span><button type="button" class="locbtn" data-for="start" aria-label="출발을 내 위치로 입력" title="내 위치"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="7"/><circle cx="12" cy="12" r="2.5" fill="currentColor" stroke="none"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg></button><ul class="ac" id="ac-start" role="listbox" hidden></ul></div></div>
