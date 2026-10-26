@@ -10,7 +10,8 @@ import { searchPlace, searchPlaces, reverseGeocode, getRoute } from "./lib/kakao
 import { getRoute as getNaverRoute } from "./lib/naver.js";
 import { getRoute as getTmapRoute } from "./lib/tmap.js";
 import { DEFAULT_PRICES, fetchAverages } from "./lib/opinet.js";
-import { createDailyLimiter, createRateLimiter, passwordOk, clientIp, positiveInt } from "./lib/guard.js";
+import { createDailyLimiter, createRateLimiter, passwordOk, passwordMatches, createSession, sessionOk, parseCookies, sessionCookie, clientIp, positiveInt } from "./lib/guard.js";
+import { loginPage } from "./lib/loginPage.js";
 
 const ROOT = path.dirname(fileURLToPath(import.meta.url));
 
@@ -64,6 +65,8 @@ const LIMITS = {
 };
 const daily = createDailyLimiter(LIMITS);
 const apiRate = createRateLimiter({ max: positiveInt(process.env.RATE_LIMIT_PER_MIN, 120), windowMs: 60_000 });
+const SESSION_COOKIE = "ppalli_session";
+const SESSION_TTL_MS = 30 * 24 * 3600 * 1000; // 로그인 유지 30일
 const authFail = createRateLimiter({ max: 10, windowMs: 10 * 60_000 }); // 비밀번호 10번 틀리면 10분간 잠금
 function spend(name) {
   if (daily.take(name)) return;
@@ -103,6 +106,26 @@ function resolvePlace(url, prefix, text) {
 // 경로 옵션: recommend(추천경로, 기본) | fast(최소시간)
 const modeOf = (url) => (["fast", "short"].includes(url.searchParams.get("mode")) ? url.searchParams.get("mode") : "recommend");
 
+function html(res, status, body) {
+  res.writeHead(status, { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store" });
+  res.end(body);
+}
+
+// 로그인 폼 본문 읽기(최대 1KB)
+function readBody(req, max = 1024) {
+  return new Promise((resolve, reject) => {
+    let size = 0;
+    const chunks = [];
+    req.on("data", (c) => {
+      size += c.length;
+      if (size > max) { reject(Object.assign(new Error("요청이 너무 커요"), { status: 413 })); req.destroy(); }
+      else chunks.push(c);
+    });
+    req.on("end", () => resolve(Buffer.concat(chunks).toString("utf8")));
+    req.on("error", reject);
+  });
+}
+
 function json(res, status, data) {
   res.writeHead(status, { "Content-Type": "application/json; charset=utf-8", "Cache-Control": "no-store" });
   res.end(JSON.stringify(data));
@@ -112,12 +135,29 @@ const server = http.createServer(async (req, res) => {
   const url = new URL(req.url, `http://${req.headers.host}`);
   const ip = clientIp(req, TRUST_PROXY);
   try {
-    // 1) 접속 비밀번호 (APP_PASSWORD를 설정했을 때). 연속으로 틀리면 잠근다
+    // 1) 접속 비밀번호 (APP_PASSWORD를 설정했을 때): 로그인 화면에서 비밀번호만 입력 → 서명된 쿠키.
+    //    curl 같은 스크립트용으로 Basic 인증 헤더도 허용한다. 연속으로 틀리면 잠근다
     if (APP_PASSWORD) {
-      if (authFail.blocked(ip)) return json(res, 429, { error: "비밀번호를 너무 많이 틀렸어요. 10분 뒤에 다시 시도해 주세요." });
-      if (!passwordOk(req.headers.authorization, APP_PASSWORD)) {
-        authFail.hit(ip);
-        res.writeHead(401, { "WWW-Authenticate": 'Basic realm="ppalligayu", charset="UTF-8"', "Content-Type": "text/plain; charset=utf-8" });
+      const secure = req.socket.encrypted || (TRUST_PROXY && req.headers["x-forwarded-proto"] === "https");
+      if (url.pathname === "/login" && req.method === "POST") {
+        if (authFail.blocked(ip)) return html(res, 429, loginPage("비밀번호를 너무 많이 틀렸어요. 10분 뒤에 다시 시도해 주세요."));
+        const pw = new URLSearchParams(await readBody(req)).get("password") || "";
+        if (!passwordMatches(pw, APP_PASSWORD)) {
+          authFail.hit(ip);
+          return html(res, 401, loginPage("비밀번호가 맞지 않아요."));
+        }
+        res.writeHead(303, {
+          Location: "/",
+          "Set-Cookie": sessionCookie(SESSION_COOKIE, createSession(APP_PASSWORD, SESSION_TTL_MS), { maxAgeSec: SESSION_TTL_MS / 1000, secure }),
+          "Cache-Control": "no-store",
+        });
+        return res.end();
+      }
+      const authed = sessionOk(parseCookies(req.headers.cookie)[SESSION_COOKIE], APP_PASSWORD) || passwordOk(req.headers.authorization, APP_PASSWORD);
+      if (!authed) {
+        if (url.pathname.startsWith("/api/")) return json(res, 401, { error: "로그인이 필요해요. 페이지를 새로고침해 주세요." });
+        if (req.method === "GET" && /text\/html/.test(req.headers.accept || "")) return html(res, 200, loginPage());
+        res.writeHead(401, { "Content-Type": "text/plain; charset=utf-8" });
         return res.end("인증이 필요해요");
       }
     }

@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { createDailyLimiter, createRateLimiter, passwordOk, clientIp, positiveInt } from "../lib/guard.js";
+import { createDailyLimiter, createRateLimiter, passwordOk, passwordMatches, createSession, sessionOk, parseCookies, sessionCookie, clientIp, positiveInt } from "../lib/guard.js";
 
 const basic = (user, pass) => "Basic " + Buffer.from(`${user}:${pass}`).toString("base64");
 
@@ -61,4 +61,33 @@ test("환경변수 숫자: 양의 정수가 아니면 기본값", () => {
   assert.equal(positiveInt("abc", 7), 7);
   assert.equal(positiveInt(undefined, 7), 7);
   assert.equal(positiveInt("-3", 7), 7);
+});
+
+test("비밀번호 입력값 비교", () => {
+  assert.equal(passwordMatches("비번123", "비번123"), true);
+  assert.equal(passwordMatches("비번124", "비번123"), false);
+  assert.equal(passwordMatches("", "비번123"), false);
+  assert.equal(passwordMatches(undefined, "비번123"), false);
+});
+
+test("로그인 세션: 유효, 만료, 위조, 비밀번호 변경 시 무효", () => {
+  let t = 1_800_000_000_000;
+  const token = createSession("비번", 1000, () => t);
+  assert.equal(sessionOk(token, "비번", () => t + 500), true);
+  assert.equal(sessionOk(token, "비번", () => t + 1000), false); // 만료
+  assert.equal(sessionOk(token, "다른비번", () => t + 500), false); // 비밀번호 변경
+  const [exp, sig] = token.split(".");
+  assert.equal(sessionOk(`${Number(exp) + 99999}.${sig}`, "비번", () => t + 500), false); // 만료시각 조작
+  assert.equal(sessionOk(`${exp}.${"0".repeat(64)}`, "비번", () => t + 500), false);
+  assert.equal(sessionOk("엉터리", "비번", () => t), false);
+  assert.equal(sessionOk(undefined, "비번", () => t), false);
+  assert.equal(sessionOk(undefined, "", () => t), true); // 비밀번호를 안 쓰는 설정
+});
+
+test("쿠키 읽기/만들기", () => {
+  assert.deepEqual(parseCookies("a=1; ppalli_session=x%2Ey; b=%ED%95%9C"), { a: "1", ppalli_session: "x.y", b: "한" });
+  assert.deepEqual(parseCookies(undefined), {});
+  const c = sessionCookie("s", "v", { maxAgeSec: 60, secure: true });
+  assert.match(c, /^s=v; Path=\/; HttpOnly; SameSite=Lax; Max-Age=60; Secure$/);
+  assert.doesNotMatch(sessionCookie("s", "v", { maxAgeSec: 60, secure: false }), /Secure/);
 });

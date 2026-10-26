@@ -31,7 +31,7 @@ body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--font-body)
 h1{font-size:40px;font-weight:800;margin:0;text-align:center;text-wrap:balance;letter-spacing:-.01em}
 .note{font-size:13px;color:var(--muted);margin:2px 0 0;text-align:center}
 .sign{background:var(--sign);color:var(--sign-ink);border-radius:10px;padding:16px;display:grid;
-  grid-template-columns:1fr auto 1fr 150px auto;gap:10px;align-items:end}
+  grid-template-columns:1fr auto 1fr auto;gap:10px;align-items:end}
 .sign label{display:block;font-size:12px;letter-spacing:.06em;opacity:.85;margin-bottom:4px}
 .sign input{width:100%;font:inherit;padding:10px 12px;border-radius:6px;border:2px solid transparent;background:#fff;color:#15202b}
 .sign input:focus{outline:none;border-color:#ffd54a}
@@ -191,10 +191,16 @@ h1{font-weight:700;letter-spacing:-.025em}
 .fuelgrid select:focus,.fuelgrid input:focus{outline:none;border-color:var(--a1)}
 .fuelgrid input[readonly]{background:transparent}
 .leaflet-container{font-family:inherit}
+.sign .go{grid-row:1;grid-column:4}
+/* 출발 시각은 별도 줄: 지금/나중에 토글과 시각 조정 버튼이 나란히 놓이고, 비교하기 버튼과 겹치지 않는다 */
+.sign .f-time{grid-row:2;grid-column:1/-1;display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px}
+.sign .f-time>label{flex:1 0 100%;margin:0}
+.sign .when{flex:0 0 280px}
+.sign .timebox{flex:1 1 360px;margin-top:0}
 @media (max-width:820px){
   /* 출발·도착 칸의 라벨과 입력을 격자 칸으로 풀어서, 바꾸기 버튼이 두 입력 사이 정중앙(가로·세로)에 오게 한다.
      3행: 가운데에 바꾸기 버튼, 왼쪽에 "도착" 라벨 */
-  .sign{grid-template-columns:1fr;gap:8px}
+  .sign{grid-template-columns:minmax(0,1fr);gap:8px}
   .sign .f-start,.sign .f-end{display:contents}
   .sign .f-start>label{grid-row:1;margin:0}
   .sign .f-start>.acwrap{grid-row:2}
@@ -204,6 +210,13 @@ h1{font-weight:700;letter-spacing:-.025em}
   .sign .f-time{grid-row:5}
   .sign .go{grid-row:6}
   .sign .f-time,.sign .go{grid-column:1/-1}
+  .sign .f-time{display:block}
+  .sign .when{width:100%}
+  /* 시각은 윗줄, −1시간/−30분/+30분/+1시간은 아랫줄에 4등분 (한 줄에 다 넣으면 카드 밖으로 넘침) */
+  .sign .timebox{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;margin-top:6px}
+  .sign .timebox[hidden]{display:none}
+  .sign .timefield{order:-1;grid-column:1/-1}
+  .sign .step{padding:10px 4px;font-size:13px}
   .grid{grid-template-columns:1fr}
   .legend{margin-left:0}
 }
