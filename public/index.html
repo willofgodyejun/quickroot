@@ -412,6 +412,8 @@ const PLACES={
 const ROADS=["올림픽대로","강변북로","자유로","서울외곽순환고속도로","경부고속도로","동부간선도로","내부순환로","분당수서로",
  "제2경인고속도로","인천공항고속도로","강남대로","테헤란로","남부순환로","서부간선도로","용인서울고속도로","경인고속도로"];
 const HIGHWAY=/고속도로/;
+// 화면이 좁으면(폰 크기, 데스크톱 브라우저를 좁게 연 경우 포함) 티맵 열기 버튼도 보여준다
+const narrowScreen=()=>matchMedia("(max-width:820px)").matches;
 // 모바일(폰·태블릿) 여부. 아이패드는 데스크톱 UA를 쓰므로 터치 지원으로 구분
 const isMobile=()=>/Android|iPhone|iPad|iPod/i.test(navigator.userAgent)||(navigator.platform==="MacIntel"&&navigator.maxTouchPoints>1);
 // 모바일에서 '~에서 열기'를 누르면 앱을 먼저 열고, 1.5초 안에 앱으로 넘어가지 않으면(앱 미설치) 웹/스토어로 이동
@@ -441,8 +443,8 @@ const APPS=[
     // 카카오 공식 길찾기 링크: 모바일에서는 앱으로, 앱이 없으면 웹으로 이어짐
     return {web:`https://map.kakao.com/link/by/car/${encodeURIComponent(c.o.name)},${c.o.y},${c.o.x}/${encodeURIComponent(c.d.name)},${c.d.y},${c.d.x}`}}},
  {id:"tmap",name:"티맵",color:"var(--a3)",circ:1.33,bias:-0.05,links:c=>{
-    // 티맵은 웹 길찾기 주소가 없어 모바일에서만 앱을 연다. 앱이 없으면 스토어로
-    if(!isMobile()||!(c.o&&c.d))return null;
+    // 티맵은 웹 길찾기 주소가 없어 모바일(좁은 화면 포함)에서만 버튼을 보이고, 앱이 없으면 스토어로
+    if(!(isMobile()||narrowScreen())||!(c.o&&c.d))return null;
     const nm=p=>encodeURIComponent(p.name);
     return {
       web:/iPhone|iPad|iPod|Mac/i.test(navigator.userAgent)?"https://apps.apple.com/kr/app/tmap/id431589174":"https://play.google.com/store/apps/details?id=com.skt.tmap.ku",
