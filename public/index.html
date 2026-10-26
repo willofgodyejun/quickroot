@@ -412,10 +412,41 @@ const PLACES={
 const ROADS=["올림픽대로","강변북로","자유로","서울외곽순환고속도로","경부고속도로","동부간선도로","내부순환로","분당수서로",
  "제2경인고속도로","인천공항고속도로","강남대로","테헤란로","남부순환로","서부간선도로","용인서울고속도로","경인고속도로"];
 const HIGHWAY=/고속도로/;
+// 모바일(폰·태블릿) 여부. 아이패드는 데스크톱 UA를 쓰므로 터치 지원으로 구분
+const isMobile=()=>/Android|iPhone|iPad|iPod/i.test(navigator.userAgent)||(navigator.platform==="MacIntel"&&navigator.maxTouchPoints>1);
+// 모바일에서 '~에서 열기'를 누르면 앱을 먼저 열고, 1.5초 안에 앱으로 넘어가지 않으면(앱 미설치) 웹/스토어로 이동
+function openNative(a,go=u=>{location.href=u}){
+  const fallback=a.dataset.store||a.getAttribute("href");
+  let left=false;const mark=()=>{left=true};
+  document.addEventListener("visibilitychange",mark,{once:true});
+  window.addEventListener("pagehide",mark,{once:true});
+  go(a.dataset.app);
+  setTimeout(()=>{document.removeEventListener("visibilitychange",mark);if(!left&&document.visibilityState==="visible")go(fallback)},1500);
+}
+document.addEventListener("click",ev=>{
+  const a=ev.target.closest("a.open[data-app]");
+  if(!a||!isMobile())return;
+  ev.preventDefault();openNative(a);
+});
 const APPS=[
- {id:"naver",name:"네이버지도",color:"var(--a1)",circ:1.30,bias:0.00,link:(s,e)=>`https://map.naver.com/p/search/${encodeURIComponent(e)}`},
- {id:"kakao",name:"카카오맵",color:"var(--a2)",circ:1.27,bias:0.03,link:(s,e)=>`https://map.kakao.com/?sName=${encodeURIComponent(s)}&eName=${encodeURIComponent(e)}`},
- {id:"tmap",name:"티맵",color:"var(--a3)",circ:1.33,bias:-0.05,link:null}
+ {id:"naver",name:"네이버지도",color:"var(--a1)",circ:1.30,bias:0.00,links:c=>{
+    if(!(c.o&&c.d))return {web:`https://map.naver.com/p/search/${encodeURIComponent(c.e)}`};
+    const nm=p=>encodeURIComponent(p.name);
+    return {
+      // 웹: 출발·도착이 채워진 자동차 길찾기. 모바일: 네이버지도 앱을 먼저 열고, 안 열리면 웹으로
+      web:`https://map.naver.com/p/directions/${c.o.x},${c.o.y},${nm(c.o)}/${c.d.x},${c.d.y},${nm(c.d)}/-/car`,
+      app:`nmap://route/car?slat=${c.o.y}&slng=${c.o.x}&sname=${nm(c.o)}&dlat=${c.d.y}&dlng=${c.d.x}&dname=${nm(c.d)}&appname=quickroot`}}},
+ {id:"kakao",name:"카카오맵",color:"var(--a2)",circ:1.27,bias:0.03,links:c=>{
+    if(!(c.o&&c.d))return {web:`https://map.kakao.com/?sName=${encodeURIComponent(c.s)}&eName=${encodeURIComponent(c.e)}`};
+    // 카카오 공식 길찾기 링크: 모바일에서는 앱으로, 앱이 없으면 웹으로 이어짐
+    return {web:`https://map.kakao.com/link/by/car/${encodeURIComponent(c.o.name)},${c.o.y},${c.o.x}/${encodeURIComponent(c.d.name)},${c.d.y},${c.d.x}`}}},
+ {id:"tmap",name:"티맵",color:"var(--a3)",circ:1.33,bias:-0.05,links:c=>{
+    // 티맵은 웹 길찾기 주소가 없어 모바일에서만 앱을 연다. 앱이 없으면 스토어로
+    if(!isMobile()||!(c.o&&c.d))return null;
+    const nm=p=>encodeURIComponent(p.name);
+    return {
+      web:/iPhone|iPad|iPod|Mac/i.test(navigator.userAgent)?"https://apps.apple.com/kr/app/tmap/id431589174":"https://play.google.com/store/apps/details?id=com.skt.tmap.ku",
+      app:`tmap://route?startx=${c.o.x}&starty=${c.o.y}&startname=${nm(c.o)}&goalx=${c.d.x}&goaly=${c.d.y}&goalname=${nm(c.d)}`}}}
 ];
 let LIVE={kakao:false,naver:false,tmap:false};
 let MODE="recommend"; // recommend(추천경로) | fast(최소시간)
@@ -553,7 +584,8 @@ function stripHtml(r,pc){
 }
 
 function card(app,r,ctx,best){
-  const link=app.link?`<a class="open" href="${app.link(ctx.s,ctx.e)}" target="_blank" rel="noopener">${app.name}에서 열기 ↗</a>`:`<span class="open off">티맵은 모바일 앱에서 확인</span>`;
+  const L=app.links(ctx);
+  const link=L?`<a class="open" href="${L.web}" target="_blank" rel="noopener"${L.app?` data-app="${L.app}"`:""}>${app.name}에서 열기 ↗</a>`:`<span class="open off">티맵은 모바일에서 열 수 있어요</span>`;
   const head=`<div class="head"><span class="dot" style="background:${app.color}"></span><span class="name">${app.name}</span>
     <span class="tag ${r&&r.source!=="sample"?"live":""}">${r&&r.source!=="sample"?"실시간":"샘플"}</span>${best?'<span class="pill">최단 시간</span>':""}</div>`;
   if(r==="loading") return head+`<p class="msg">경로를 불러오는 중…</p>`;
@@ -633,6 +665,7 @@ async function run(){
       if(!coords){
         // 실제 좌표를 알았으니 샘플 카드도 같은 좌표로 다시 계산
         coords={o:[body.origin.y,body.origin.x],d:[body.destination.y,body.destination.x]};
+        ctx.o=body.origin;ctx.d=body.destination; // '열기' 버튼이 출발·도착 좌표로 길찾기를 열도록
         // 직접 입력한 장소는 조회된 주소를 오른쪽에 표시 (그 사이 입력이 바뀌었으면 건너뜀)
         [["start",s,body.origin],["end",e,body.destination]].forEach(([id,text,pl])=>{
           if(!SEL[id]&&$(id).value.trim()===text&&pl.address)showAddr(id,pl.address);
