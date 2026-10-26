@@ -99,13 +99,7 @@ h1{font-size:40px;font-weight:800;margin:0;text-align:center;text-wrap:balance;l
 .fitbtn{font:inherit;font-size:13px;font-weight:500;border:0;background:transparent;color:var(--a1);cursor:pointer;padding:4px 0}
 .fitbtn:hover{text-decoration:underline}
 .open.off{color:var(--muted)}
-.fuelbox{margin-top:12px;border:1px solid var(--line);border-radius:10px;background:var(--surface);padding:10px 14px}
-.fuelbox summary{cursor:pointer;font-size:14px;font-weight:600}
 .fuelgrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-top:12px}
-.fuelgrid label{display:block;font-size:12px;color:var(--muted);margin-bottom:4px}
-.fuelgrid select,.fuelgrid input{width:100%;font:inherit;font-size:14px;padding:7px 8px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:inherit}
-.fuelnote{font-size:12px;color:var(--muted);margin:10px 0 2px}
-.fuelgrid input[readonly]{background:transparent;color:var(--muted);cursor:default}
 .tabs{display:flex;gap:6px;margin:14px 0 4px}
 .tab{font:inherit;font-size:14px;font-weight:600;padding:7px 16px;border:1px solid var(--line);border-radius:99px;background:var(--surface);color:var(--muted);cursor:pointer}
 .tab.on{background:var(--a1);border-color:var(--a1);color:#fff}
@@ -174,9 +168,13 @@ h1{font-weight:700;letter-spacing:-.025em}
 .tpop .hm input:focus{border-color:var(--a1);background:var(--surface)}
 .tpop .hm input.bad{border-color:var(--jam)}
 .tpop .tpok{background:var(--a1);color:#fff;border-radius:12px;font-weight:600}
-.tabs{display:flex;gap:2px;padding:3px;margin:6px 0 2px;border-radius:12px;background:var(--field)}
+.tabs{display:flex;gap:2px;padding:4px;margin:6px 0 2px;border-radius:14px;
+  /* 음각: 트랙을 한 단계 어둡게 하고 안쪽 그림자를 깊게, 아래쪽 가장자리에 얇은 하이라이트 */
+  background:color-mix(in srgb,var(--field) 88%,#000);
+  box-shadow:inset 0 2px 6px rgba(0,0,0,.24),inset 0 0 0 1px rgba(0,0,0,.07),0 1px 0 rgba(255,255,255,.7)}
+@media (prefers-color-scheme: dark){.tabs{box-shadow:inset 0 3px 8px rgba(0,0,0,.75),inset 0 0 0 1px rgba(255,255,255,.04),0 1px 0 rgba(255,255,255,.06)}}
 .tab{flex:1;border:0;background:transparent;color:var(--ink);font-weight:600;border-radius:10px;padding:9px 12px}
-.tab.on{background:var(--seg-on);color:var(--ink);border:0;box-shadow:0 1px 3px rgba(0,0,0,.16),0 0 0 .5px rgba(0,0,0,.04)}
+.tab.on{background:var(--seg-on);color:var(--ink);border:0;box-shadow:0 2px 5px rgba(0,0,0,.22),0 0 0 .5px rgba(0,0,0,.06)}
 .best-name{border-radius:12px;box-shadow:none}
 .legend i{border-radius:50%}
 .card{border:1px solid transparent;border-radius:22px;padding:20px;box-shadow:var(--shadow)}
@@ -190,12 +188,16 @@ h1{font-weight:700;letter-spacing:-.025em}
 .map-off{border-radius:16px}
 .open{color:var(--a1);font-weight:500}
 .open.off{color:var(--muted)}
-.fuelbox{border:0;border-radius:18px;box-shadow:var(--shadow);padding:12px 18px}
-.fuelgrid select,.fuelgrid input{background:var(--field);border:1px solid transparent;border-radius:10px;padding:9px 10px}
-.fuelgrid select:focus,.fuelgrid input:focus{outline:none;border-color:var(--a1)}
-.fuelgrid input[readonly]{background:transparent}
 .leaflet-container{font-family:inherit}
 .sign .go{grid-row:1;grid-column:4}
+/* 유류비 설정: 출발 시각 아래 같은 카드 안에 유종·연비·단가를 한 줄로 */
+.sign .f-fuel{grid-row:3;grid-column:1/-1}
+.fuelgrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.sign select{width:100%;font:inherit;padding:12px 14px;border-radius:12px;border:1px solid transparent;background:var(--field);color:var(--ink)}
+.sign select:focus{outline:none;border-color:var(--a1);background:var(--surface);box-shadow:0 0 0 4px color-mix(in srgb,var(--a1) 22%,transparent)}
+.fuelgrid input[readonly]{color:var(--muted);cursor:default}
+.fuelgrid input[readonly]:focus{box-shadow:none;border-color:transparent;background:var(--field)}
+.fuelnote{font-size:12px;color:var(--muted);margin:8px 0 0}
 /* 출발 시각은 별도 줄: 지금/나중에 토글과 시각 조정 버튼이 나란히 놓이고, 비교하기 버튼과 겹치지 않는다 */
 .sign .f-time{grid-row:2;grid-column:1/-1;display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px}
 .sign .f-time>label{flex:1 0 100%;margin:0}
@@ -212,8 +214,9 @@ h1{font-weight:700;letter-spacing:-.025em}
   .sign .f-end>label{grid-row:3;grid-column:1;justify-self:start;align-self:center;margin:0}
   .sign .f-end>.acwrap{grid-row:4}
   .sign .f-time{grid-row:5}
-  .sign .go{grid-row:6}
-  .sign .f-time,.sign .go{grid-column:1/-1}
+  .sign .f-fuel{grid-row:6}
+  .sign .go{grid-row:7}
+  .sign .f-time,.sign .f-fuel,.sign .go{grid-column:1/-1}
   .sign .f-time{display:block}
   .sign .when{width:100%}
   /* 시각은 윗줄, −1시간/−30분/+30분/+1시간은 아랫줄에 4등분 (한 줄에 다 넣으면 카드 밖으로 넘침) */
@@ -265,18 +268,17 @@ h1{font-weight:700;letter-spacing:-.025em}
         <button type="button" class="step" id="tPlus60" aria-label="1시간 후">+1시간</button>
       </div>
     </div>
+    <div class="f-fuel"><label id="fuelLabel">유류비 설정</label>
+      <div class="fuelgrid" role="group" aria-labelledby="fuelLabel">
+        <div><label for="fFuel">유종</label><select id="fFuel"><option value="gasoline">휘발유</option><option value="diesel">경유</option><option value="ev">전기</option></select></div>
+        <div><label for="fEco" id="fEcoLabel">연비</label><input id="fEco" type="number" min="1" max="50" step="0.1" inputmode="decimal"></div>
+        <div><label for="fPrice" id="fPriceLabel">단가</label><input id="fPrice" type="text" readonly tabindex="-1"></div>
+      </div>
+      <p class="fuelnote" id="fuelNote"></p>
+    </div>
     <button type="submit" class="go" id="go">비교하기</button>
   </form>
 
-  <details class="fuelbox" id="fuelbox">
-    <summary id="fuelSum">유류비 설정</summary>
-    <div class="fuelgrid">
-      <div><label for="fFuel">유종</label><select id="fFuel"><option value="gasoline">휘발유</option><option value="diesel">경유</option><option value="ev">전기</option></select></div>
-      <div><label for="fEco" id="fEcoLabel">연비</label><input id="fEco" type="number" min="1" max="50" step="0.1" inputmode="decimal"></div>
-      <div><label for="fPrice" id="fPriceLabel">단가</label><input id="fPrice" type="text" readonly tabindex="-1"></div>
-    </div>
-    <p class="fuelnote" id="fuelNote"></p>
-  </details>
 
   <div class="tabs" role="tablist" aria-label="경로 옵션">
     <button type="button" class="tab on" role="tab" aria-selected="true" data-mode="recommend">추천경로</button>
@@ -394,7 +396,6 @@ if(typeof F.eco!=="object"||F.eco===null)F.eco={};
 const saveF=()=>{try{localStorage.setItem("fuelPrefs",JSON.stringify({fuel:F.fuel,eco:F.eco}))}catch(_){}};
 const ecoNow=()=>F.eco[F.fuel]>0?F.eco[F.fuel]:FUELS[F.fuel].defEco;
 const fuel=d=>Math.round(d/ecoNow()*PRICES[F.fuel]/100)*100;
-const fuelSummary=()=>{const fu=FUELS[F.fuel];return `유류비 설정 · ${fu.name} · ${ecoNow()}${fu.eco} · ${PRICES[F.fuel].toLocaleString("ko-KR")}${fu.price}`};
 function renderFuelUI(){
   const fu=FUELS[F.fuel];
   $("fFuel").value=F.fuel;
@@ -402,7 +403,6 @@ function renderFuelUI(){
   $("fEco").value=ecoNow();
   $("fPriceLabel").textContent=`단가 (${fu.price})`;
   $("fPrice").value=PRICES[F.fuel].toLocaleString("ko-KR");
-  $("fuelSum").textContent=fuelSummary();
   $("fuelNote").textContent=F.fuel==="ev"
     ?"전기 단가는 오피넷 대상이 아니라 참고값(300원/kWh)이에요. 연비는 내 차의 실제 전비를 입력하세요."
     :`단가는 ${PRICE_NOTE||"오피넷 전국 평균"} 기준이에요. 연비는 내 차의 실제 연비를 입력하세요.`;
@@ -412,12 +412,11 @@ $("fFuel").addEventListener("change",e=>{F.fuel=e.target.value;onFuelChange()});
 $("fEco").addEventListener("input",e=>{
   const n=Number(e.target.value);if(!(n>0))return;
   F.eco[F.fuel]=n;saveF();
-  $("fuelSum").textContent=fuelSummary();
   if(LAST)draw(LAST.results,LAST.ctx);
 });
 fetch("/api/fuel").then(r=>r.json()).then(p=>{
   PRICES={gasoline:p.gasoline,diesel:p.diesel,ev:p.ev};
-  PRICE_NOTE=p.source==="opinet"?`오피넷 전국 평균(${p.asOf})`:`오피넷 전국 평균(${p.asOf} 기준 기본값)`;
+  PRICE_NOTE=p.source==="opinet"?`오피넷 전국 평균(${p.asOf})`:`오피넷 전국 평균(${p.asOf} 기본값)`;
 }).catch(()=>{}).finally(()=>{renderFuelUI();if(LAST)draw(LAST.results,LAST.ctx)});
 renderFuelUI();
 const STC={ok:"var(--ok)",slow:"var(--slow)",jam:"var(--jam)",none:"var(--none)"};
