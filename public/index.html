@@ -216,6 +216,11 @@ h1{font-weight:700;letter-spacing:-.025em}
 .sign .timebox{flex:1 1 360px;margin-top:0}
 /* 음각 입력칸: 출발·도착, 유종·연비·단가가 경로 탭 트랙과 같은 색·그림자를 쓴다 */
 .acwrap input,.fuelgrid input,.fuelgrid select{background:var(--well);box-shadow:var(--well-shadow)}
+/* 지금/나중에 출발 토글 트랙과 시각 칸도 같은 음각 (탭 트랙과 같은 여백·모서리, 선택된 쪽은 같은 그림자로 떠 보이게) */
+.when{background:var(--well);box-shadow:var(--well-shadow);border-radius:14px;padding:4px;gap:2px}
+.wbtn.on{box-shadow:0 2px 5px rgba(0,0,0,.22),0 0 0 .5px rgba(0,0,0,.06)}
+.timebtn{background:var(--well);box-shadow:var(--well-shadow)}
+.timebtn:focus-visible,.timebtn[aria-expanded="true"]{background:var(--surface);box-shadow:var(--well-shadow),0 0 0 4px color-mix(in srgb,var(--a1) 22%,transparent)}
 .acwrap input:focus,.fuelgrid input:focus,.fuelgrid select:focus{background:var(--surface);border-color:var(--a1);box-shadow:var(--well-shadow),0 0 0 4px color-mix(in srgb,var(--a1) 22%,transparent)}
 @media (max-width:820px){
   /* 출발·도착 칸의 라벨과 입력을 격자 칸으로 풀어서, 바꾸기 버튼이 두 입력 사이 정중앙(가로·세로)에 오게 한다.
