@@ -196,9 +196,8 @@ h1{font-weight:700;letter-spacing:-.025em}
 .sign select{width:100%;font:inherit;padding:12px 14px;border-radius:12px;border:1px solid transparent;background:var(--field);color:var(--ink)}
 .sign select:focus{outline:none;border-color:var(--a1);background:var(--surface);box-shadow:0 0 0 4px color-mix(in srgb,var(--a1) 22%,transparent)}
 .fuelnote{display:flex;align-items:center;gap:10px;font-size:12px;color:var(--muted);margin:8px 0 0}
-.fuelnote>span{min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .linkbtn{flex:none;font:inherit;font-size:12px;font-weight:600;border:0;background:transparent;color:var(--a1);cursor:pointer;padding:0}
-.linkbtn[hidden]{display:none}
+.fuelnote[hidden]{display:none}
 .linkbtn:hover{text-decoration:underline}
 /* 출발 시각은 별도 줄: 지금/나중에 토글과 시각 조정 버튼이 나란히 놓이고, 비교하기 버튼과 겹치지 않는다 */
 .sign .f-time{grid-row:2;grid-column:1/-1;display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px}
@@ -276,7 +275,7 @@ h1{font-weight:700;letter-spacing:-.025em}
         <div><label for="fEco" id="fEcoLabel">연비</label><input id="fEco" type="number" min="1" max="50" step="0.1" inputmode="decimal"></div>
         <div><label for="fPrice" id="fPriceLabel">단가</label><input id="fPrice" type="number" min="1" step="1" inputmode="numeric"></div>
       </div>
-      <p class="fuelnote"><span id="fuelNote"></span><button type="button" class="linkbtn" id="fPriceReset" hidden>기본값으로</button></p>
+      <p class="fuelnote" id="fuelNoteRow" hidden><button type="button" class="linkbtn" id="fPriceReset">기본값으로 되돌리기</button></p>
     </div>
     <button type="submit" class="go" id="go">비교하기</button>
   </form>
@@ -407,11 +406,10 @@ function renderFuelUI(){
   $("fEco").value=ecoNow();
   $("fPriceLabel").textContent=`단가 (${fu.price})`;
   $("fPrice").value=unitPrice();
-  $("fPriceReset").hidden=!(F.price[F.fuel]>0);
+  $("fuelNoteRow").hidden=!(F.price[F.fuel]>0);
   // 한 줄 안내. 자세한 출처는 마우스를 올리면 툴팁으로
-  const edited=F.price[F.fuel]>0;
-  $("fuelNote").textContent=edited?"단가를 직접 수정했어요":F.fuel==="ev"?"전기 단가는 참고값, 수정할 수 있어요":"단가는 오피넷 기본값, 수정할 수 있어요";
-  $("fuelNote").title=F.fuel==="ev"?"전기 단가는 오피넷 대상이 아니라 참고값(300원/kWh)이에요. 쓰는 충전 요금과 내 차의 실제 전비를 입력하세요.":`단가 기본값은 ${PRICE_NOTE||"오피넷 전국 평균"} 기준이에요. 단가와 내 차의 실제 연비를 직접 수정할 수 있어요.`;
+  // 단가 기본값은 오피넷 전국 평균. 직접 수정했을 때만 되돌리기 줄을 보여준다
+  $("fPrice").title=F.fuel==="ev"?"전기 단가 기본값은 참고값(300원/kWh)이에요":`기본값: ${PRICE_NOTE||"오피넷 전국 평균"}`;
 }
 function onFuelChange(){saveF();renderFuelUI();if(LAST)draw(LAST.results,LAST.ctx)}
 $("fFuel").addEventListener("change",e=>{F.fuel=e.target.value;onFuelChange()});
@@ -425,8 +423,7 @@ $("fPrice").addEventListener("input",e=>{
   const n=Number(e.target.value);if(!(n>0))return;
   if(n===PRICES[F.fuel])delete F.price[F.fuel];else F.price[F.fuel]=n;
   saveF();
-  $("fPriceReset").hidden=!(F.price[F.fuel]>0);
-  $("fuelNote").textContent=F.price[F.fuel]>0?"단가를 직접 수정했어요":F.fuel==="ev"?"전기 단가는 참고값, 수정할 수 있어요":"단가는 오피넷 기본값, 수정할 수 있어요";
+  $("fuelNoteRow").hidden=!(F.price[F.fuel]>0);
   if(LAST)draw(LAST.results,LAST.ctx);
 });
 $("fPrice").addEventListener("blur",()=>{if(!(Number($("fPrice").value)>0)){delete F.price[F.fuel];onFuelChange()}});
