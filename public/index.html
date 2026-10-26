@@ -208,6 +208,8 @@ h1{font-weight:700;letter-spacing:-.025em}
 .fuelnote{display:flex;align-items:center;gap:10px;font-size:12px;color:var(--muted);margin:8px 0 0}
 .linkbtn{flex:none;font:inherit;font-size:12px;font-weight:600;border:0;background:transparent;color:var(--a1);cursor:pointer;padding:0}
 .fuelnote[hidden]{display:none}
+.tag.ref{border-color:color-mix(in srgb,var(--slow) 55%,transparent);color:var(--slow);background:color-mix(in srgb,var(--slow) 12%,transparent)}
+.refnote{margin:-4px 0 0;font-size:12px;color:var(--slow)}
 .linkbtn:hover{text-decoration:underline}
 /* 출발 시각은 별도 줄: 지금/나중에 토글과 시각 조정 버튼이 나란히 놓이고, 비교하기 버튼과 겹치지 않는다 */
 .sign .f-time{grid-row:2;grid-column:1/-1;display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px}
@@ -325,8 +327,8 @@ h1{font-weight:700;letter-spacing:-.025em}
   .sign .f-time,.sign .f-fuel,.sign .go{grid-column:1/-1}
   .sign .f-time{display:block}
   .sign .when{width:100%}
-  /* 시각은 윗줄, −1시간/−30분/+30분/+1시간은 아랫줄에 4등분 (한 줄에 다 넣으면 카드 밖으로 넘침) */
-  .sign .timebox{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;margin-top:6px}
+  /* 시각은 윗줄, +30분/+1시간은 아랫줄에 2등분 */
+  .sign .timebox{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;margin-top:6px}
   .sign .timebox[hidden]{display:none}
   .sign .timefield{order:-1;grid-column:1/-1}
   .sign .step{padding:10px 4px;font-size:13px}
@@ -373,8 +375,6 @@ h1{font-weight:700;letter-spacing:-.025em}
         <button type="button" class="wbtn" id="wLater" data-when="later" aria-pressed="false">나중에 출발</button>
       </div>
       <div class="timebox" id="timebox" hidden>
-        <button type="button" class="step" id="tMinus60" aria-label="1시간 전">−1시간</button>
-        <button type="button" class="step" id="tMinus" aria-label="30분 전">−30분</button>
         <div class="timefield">
           <button type="button" class="timebtn" id="timeBtn" aria-haspopup="dialog" aria-expanded="false" aria-label="출발 시각 선택"></button>
           <input type="hidden" id="time">
@@ -611,10 +611,11 @@ function stripHtml(r,pc){
 }
 
 function card(app,r,ctx,best){
+  const ref=ctx.future&&app.id==="naver"; // 네이버는 출발 시각 미지원
   const L=app.links(ctx);
   const link=L?`<a class="open" href="${L.web}" target="_blank" rel="noopener"${L.app?` data-app="${L.app}"`:""}>${app.name}에서 열기 ↗</a>`:`<span class="open off">티맵은 모바일에서 열 수 있어요</span>`;
   const head=`<div class="head"><span class="dot" style="background:${app.color}"></span><span class="name">${app.name}</span>
-    <span class="tag ${r&&r.source!=="sample"?"live":""}">${r&&r.source!=="sample"?"실시간":"샘플"}</span>${best?'<span class="pill">최단 시간</span>':""}</div>`;
+    ${ref?'<span class="tag ref">현재 교통 기준</span>':`<span class="tag ${r&&r.source!=="sample"?"live":""}">${r&&r.source!=="sample"?"실시간":"샘플"}</span>`}${best?'<span class="pill">최단 시간</span>':""}</div>${ref&&r&&r!=="loading"&&!r.error?'<p class="refnote">출발 시각 지정을 지원하지 않아 지금 교통 기준이에요. 순위에는 넣지 않았어요.</p>':""}`;
   if(r==="loading") return head+`<p class="msg">경로를 불러오는 중…</p>`;
   if(r&&r.error) return head+`<p class="msg err">${esc(r.error)}</p>${link}`;
   const pc=k=>Math.round(r.share[k]*100);
@@ -652,7 +653,8 @@ function josa(word,withBatchim,without){
 }
 function draw(results,ctx){
   LAST={results,ctx};
-  const ok=APPS.filter(a=>results[a.id]&&results[a.id].min!=null);
+  // 네이버는 출발 시각 지정이 안 돼서, 나중에 출발이면 현재 교통 기준 → 다른 앱과 같은 기준이 아니라 순위에서 뺀다
+  const ok=APPS.filter(a=>results[a.id]&&results[a.id].min!=null&&!(ctx.future&&a.id==="naver"));
   const best=ok.length?ok.reduce((x,y)=>results[y.id].min<results[x.id].min?y:x):null;
   const g=$("grid");g.innerHTML="";
   APPS.forEach(a=>{const c=document.createElement("article");c.className="card"+(best===a&&ok.length>1?" best":"");
@@ -675,7 +677,7 @@ async function run(){
   const s=$("start").value.trim(),e=$("end").value.trim();if(!s||!e)return;
   if(WHEN==="later"&&!/^\d{2}:\d{2}$/.test($("time").value))setTime(nextSlot());
   const dep=WHEN==="now"?{param:"now",date:new Date(),label:"지금 출발"}:departureInfo($("time").value||nextSlot());
-  const ctx={s,e,date:dep.date,when:dep.label,modeLabel:MODE_LABEL[MODE],notes:[]};
+  const ctx={s,e,date:dep.date,when:dep.label,modeLabel:MODE_LABEL[MODE],notes:[],future:dep.param!=="now"};
   const results={};
   APPS.forEach(a=>results[a.id]=LIVE[a.id]?"loading":simulate(a,s,e,dep.date));
   draw(results,ctx);
@@ -701,7 +703,6 @@ async function run(){
     }catch(err){results[id]={error:err.message}}
   }));
   if(coords)APPS.forEach(a=>{if(!LIVE[a.id])results[a.id]=simulate(a,s,e,dep.date,coords)});
-  if(LIVE.naver&&dep.param!=="now")ctx.notes.push("네이버는 현재 교통 기준");
   if(LIVE.naver&&MODE==="short")ctx.notes.push("네이버는 후보 3개 중 최단");
   $("go").disabled=false;
   draw(results,ctx);
@@ -843,9 +844,7 @@ document.querySelectorAll(".tab").forEach(b=>b.addEventListener("click",()=>{
   run();
 }));
 $("grid").addEventListener("click",ev=>{const b=ev.target.closest(".fitbtn");if(b)RouteMaps.fit(b.dataset.fit)});
-$("tMinus").addEventListener("click",()=>{shiftTime(-30);run()});
 $("tPlus").addEventListener("click",()=>{shiftTime(30);run()});
-$("tMinus60").addEventListener("click",()=>{shiftTime(-60);run()});
 $("tPlus60").addEventListener("click",()=>{shiftTime(60);run()});
 $("wNow").addEventListener("click",()=>{if(WHEN==="now")return;setWhen("now");run()});
 $("wLater").addEventListener("click",()=>{
