@@ -1,0 +1,674 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>빨리가유</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;700&display=swap">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css">
+<style>
+:root{
+  --bg:#f5f5f7; --surface:#ffffff; --ink:#1d1d1f; --muted:#6e6e73; --line:#e5e5ea;
+  --field:#f2f2f7; --seg-on:#ffffff; --shadow:0 1px 2px rgba(0,0,0,.04),0 8px 28px rgba(0,0,0,.07);
+  --sign:#ffffff; --sign-ink:#1d1d1f;
+  --ok:#34c759; --slow:#ff9f0a; --jam:#ff3b30; --none:#c7c7cc;
+  --a1:#0071e3; --a2:#af52de; --a3:#30b0c7; --err:#d70015;
+  --font-body:"IBM Plex Sans KR",system-ui,-apple-system,"Apple SD Gothic Neo","Malgun Gothic",sans-serif;
+  --font-num:var(--font-body); /* 숫자도 본문과 같은 글꼴로 통일 (자릿수 정렬은 tabular-nums) */
+  color-scheme:light;
+}
+@media (prefers-color-scheme: dark){:root{
+  --bg:#000000; --surface:#1c1c1e; --ink:#f5f5f7; --muted:#98989d; --line:#38383a;
+  --field:#2c2c2e; --seg-on:#636366; --shadow:0 0 0 1px rgba(255,255,255,.06);
+  --sign:#1c1c1e; --sign-ink:#f5f5f7;
+  --ok:#30d158; --slow:#ff9f0a; --jam:#ff453a; --none:#48484a;
+  --a1:#0a84ff; --a2:#bf5af2; --a3:#40c8e0; --err:#ff6961; color-scheme:dark}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--font-body);font-size:15px;line-height:1.55;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:20px 40px}
+.wrap{max-width:1080px;margin:0 auto;display:flex;flex-direction:column;gap:18px}
+h1{font-size:40px;font-weight:800;margin:0;text-align:center;text-wrap:balance;letter-spacing:-.01em}
+.note{font-size:13px;color:var(--muted);margin:2px 0 0;text-align:center}
+.sign{background:var(--sign);color:var(--sign-ink);border-radius:10px;padding:16px;display:grid;
+  grid-template-columns:1fr auto 1fr 150px auto;gap:10px;align-items:end}
+.sign label{display:block;font-size:12px;letter-spacing:.06em;opacity:.85;margin-bottom:4px}
+.sign input{width:100%;font:inherit;padding:10px 12px;border-radius:6px;border:2px solid transparent;background:#fff;color:#15202b}
+.sign input:focus{outline:none;border-color:#ffd54a}
+.acwrap{position:relative}
+.acwrap input{padding-right:44px}
+.acwrap .addr.err{color:#c0392b;font-weight:600}
+.locbtn{position:absolute;right:5px;top:50%;transform:translateY(-50%);width:32px;height:32px;display:flex;align-items:center;justify-content:center;border:0;border-radius:6px;background:transparent;color:#1c6cb3;cursor:pointer}
+.locbtn:hover{background:#eaf1f8}
+.locbtn:disabled{opacity:.5;cursor:default}
+.locbtn.busy svg{animation:spin 1s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.acwrap .addr{position:absolute;right:44px;top:50%;transform:translateY(-50%);max-width:48%;font-size:12px;color:#6b7785;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;pointer-events:none}
+.ac{position:absolute;left:0;right:0;top:calc(100% + 4px);background:#fff;color:#15202b;border-radius:8px;box-shadow:0 8px 24px rgba(0,0,0,.28);list-style:none;margin:0;padding:4px;z-index:50;max-height:300px;overflow:auto}
+.ac li{display:flex;gap:8px;align-items:baseline;padding:8px 10px;border-radius:6px;cursor:pointer;font-size:14px}
+.ac li.on,.ac li:hover{background:#eaf1f8}
+.ac .nm{font-weight:600;white-space:nowrap}
+.ac .ct,.ac .ad{font-size:12px;color:#6b7785}
+.ac .ct{white-space:nowrap}
+.ac .ad{margin-left:auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:right}
+.swap,.go{font:inherit;border:0;border-radius:6px;cursor:pointer;padding:10px 14px;font-weight:700}
+.swap{background:rgba(255,255,255,.15);color:var(--sign-ink)}
+.go{background:#ffd54a;color:#15202b}
+.go:disabled{opacity:.6;cursor:wait}
+.swap:focus-visible,.go:focus-visible,a:focus-visible{outline:3px solid #ffd54a;outline-offset:2px}
+.summary{display:flex;flex-wrap:wrap;gap:8px 20px;align-items:baseline}
+.summary strong{flex:1 0 100%;display:flex;flex-direction:column;gap:8px;font-size:17px}
+.best-name.best-kakao{background:#ffd54a;color:#15202b}
+.best-name.best-naver{background:#03c75a;color:#0a1f12}
+.best-name.best-tmap{background:#6cc5f5;color:#0a2233}
+.sum-route{font-size:15px;font-weight:600;color:var(--muted)}
+.sum-verdict{display:block;line-height:1.5}
+.best-name{display:inline-block;font-size:28px;font-weight:800;line-height:1.25;padding:0 .35em;margin:0 2px;border-radius:8px;background:#ffd54a;color:#15202b;letter-spacing:-.01em;box-shadow:0 2px 0 rgba(0,0,0,.15)}
+.legend{display:flex;flex-wrap:wrap;gap:14px;font-size:13px;color:var(--muted);margin-left:auto}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:5px;vertical-align:-1px}
+.grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:16px;display:flex;flex-direction:column;gap:12px;min-width:0}
+.card.best{border-color:var(--ok);box-shadow:0 0 0 1px var(--ok) inset}
+.head{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.dot{width:12px;height:12px;border-radius:50%}
+.name{font-weight:700;font-size:16px}
+.tag{font-size:11px;font-weight:700;padding:1px 7px;border-radius:99px;border:1px solid var(--line);color:var(--muted)}
+.tag.live{border-color:var(--ok);color:var(--ok)}
+.pill{margin-left:auto;font-size:12px;font-weight:700;padding:2px 8px;border-radius:99px;background:var(--ok);color:#fff}
+.eta{font-family:var(--font-num);font-size:34px;font-weight:700;line-height:1;font-variant-numeric:tabular-nums}
+.eta small{font-size:15px;font-weight:500;color:var(--muted);margin-left:4px}
+.arrive{font-size:13px;color:var(--muted)}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;font-size:12px;color:var(--muted)}
+.stats b{display:block;font-family:var(--font-num);font-size:15px;color:var(--ink);font-variant-numeric:tabular-nums}
+.strip{position:relative;display:flex;height:24px;border-radius:4px;overflow:hidden;background:var(--line)}
+.strip>span{display:block;height:100%;min-width:0}
+.strip-label{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;gap:4px;padding:0 6px;pointer-events:none}
+.strip-label b{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:700;color:#fff;background:rgba(15,23,32,.72);padding:1px 6px;border-radius:99px;white-space:nowrap}
+.strip-label i{display:inline-block;width:7px;height:7px;border-radius:50%}
+.ratio{display:flex;flex-wrap:wrap;gap:10px;font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums;margin-top:6px}
+.route{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:6px;font-size:13px}
+.route li{display:flex;gap:8px;align-items:center;min-width:0}
+.route .rn{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.route .st{width:8px;height:8px;border-radius:50%;flex:none}
+.route .km{margin-left:auto;font-family:var(--font-num);color:var(--muted);font-variant-numeric:tabular-nums;flex:none}
+.map{height:220px;border-radius:8px;overflow:hidden;border:1px solid var(--line);background:var(--line);z-index:0}
+.map-off{display:flex;align-items:center;justify-content:center;height:220px;border-radius:8px;border:1px dashed var(--line);font-size:13px;color:var(--muted);text-align:center;padding:0 12px}
+.open{font-size:13px;color:var(--a1);text-decoration:none;margin-top:auto;align-self:flex-end}
+.open.off{color:var(--muted)}
+.fuelbox{margin-top:12px;border:1px solid var(--line);border-radius:10px;background:var(--surface);padding:10px 14px}
+.fuelbox summary{cursor:pointer;font-size:14px;font-weight:600}
+.fuelgrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-top:12px}
+.fuelgrid label{display:block;font-size:12px;color:var(--muted);margin-bottom:4px}
+.fuelgrid select,.fuelgrid input{width:100%;font:inherit;font-size:14px;padding:7px 8px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:inherit}
+.fuelnote{font-size:12px;color:var(--muted);margin:10px 0 2px}
+.fuelgrid input[readonly]{background:transparent;color:var(--muted);cursor:default}
+.tabs{display:flex;gap:6px;margin:14px 0 4px}
+.tab{font:inherit;font-size:14px;font-weight:600;padding:7px 16px;border:1px solid var(--line);border-radius:99px;background:var(--surface);color:var(--muted);cursor:pointer}
+.tab.on{background:var(--a1);border-color:var(--a1);color:#fff}
+.msg{font-size:14px;color:var(--muted)}
+.msg.err{color:var(--err)}
+.foot{font-size:12px;color:var(--muted)}
+.timebox{display:flex;gap:6px;align-items:stretch}
+.step{font:inherit;font-size:13px;padding:0 10px;border:1px solid var(--line);border-radius:8px;background:var(--surface);color:inherit;cursor:pointer;white-space:nowrap}
+.step:hover{border-color:var(--a1)}
+.timebox[hidden]{display:none}
+.timefield{position:relative;flex:1;min-width:90px;display:flex}
+.timebtn{width:100%;font:inherit;font-weight:700;padding:10px 12px;border-radius:6px;border:2px solid transparent;background:#fff;color:#15202b;cursor:pointer;text-align:center;font-variant-numeric:tabular-nums}
+.timebtn:focus-visible,.timebtn[aria-expanded="true"]{outline:none;border-color:#ffd54a}
+.tpop{position:absolute;z-index:60;top:calc(100% + 8px);left:50%;transform:translateX(-50%);display:flex;align-items:center;gap:12px;background:#fff;color:#15202b;border-radius:10px;padding:12px;box-shadow:0 10px 30px rgba(0,0,0,.3);white-space:nowrap}
+.tpop[hidden]{display:none}
+.tpop .ampm{display:flex;flex-direction:column;gap:4px}
+.tpop .ampm button{font:inherit;font-size:13px;font-weight:700;padding:6px 14px;border:1px solid #cfd8e3;border-radius:6px;background:#fff;color:#15202b;cursor:pointer}
+.tpop .ampm button.on{background:#1c6cb3;border-color:#1c6cb3;color:#fff}
+.tpop .hm{display:flex;align-items:center;gap:4px;font-size:22px;font-weight:700}
+.tpop .hm input{width:64px;font:inherit;font-size:22px;text-align:center;padding:6px 4px;border:2px solid #cfd8e3;border-radius:8px;background:#fff;color:#15202b;font-variant-numeric:tabular-nums}
+.tpop .hm input:focus{outline:none;border-color:#1c6cb3}
+.tpop .hm input.bad{border-color:#d93a2f}
+.tpop .tpok{font:inherit;font-weight:700;padding:10px 14px;border:0;border-radius:8px;background:#ffd54a;color:#15202b;cursor:pointer}
+.when{display:flex;gap:4px;padding:3px;border-radius:8px;background:rgba(255,255,255,.15)}
+.wbtn{flex:1;font:inherit;font-size:14px;font-weight:700;padding:8px 10px;border:0;border-radius:6px;background:transparent;color:var(--sign-ink);cursor:pointer;white-space:nowrap}
+.wbtn.on{background:#fff;color:#15202b}
+.wbtn:focus-visible{outline:3px solid #ffd54a;outline-offset:2px}
+.sign .timebox{margin-top:6px}
+.sign .step{background:rgba(255,255,255,.15);border:0;color:var(--sign-ink);font-weight:700;font-size:12px;padding:0 8px}
+.sign .step:hover{background:rgba(255,255,255,.28)}
+/* ---- Apple 스타일 테마: 밝은 회색 배경, 흰 카드, 큰 둥근 모서리, 분할 컨트롤, 시스템 블루 ---- */
+body{-webkit-font-smoothing:antialiased}
+h1{font-weight:700;letter-spacing:-.025em}
+.note{font-size:14px}
+.summary .note{text-align:left}
+.sign{border-radius:22px;padding:20px;box-shadow:var(--shadow);gap:12px}
+.sign label{font-size:13px;font-weight:500;letter-spacing:0;opacity:1;color:var(--muted);margin-bottom:6px}
+.sign input{background:var(--field);color:var(--ink);border:1px solid transparent;border-radius:12px;padding:12px 14px}
+.sign input::placeholder{color:var(--muted)}
+.sign input:focus{outline:none;border-color:var(--a1);background:var(--surface);box-shadow:0 0 0 4px color-mix(in srgb,var(--a1) 22%,transparent)}
+.acwrap .addr{color:var(--muted)}
+.acwrap .addr.err{color:var(--err)}
+.locbtn{color:var(--a1);border-radius:10px}
+.locbtn:hover{background:color-mix(in srgb,var(--a1) 12%,transparent)}
+.ac{background:var(--surface);color:var(--ink);border-radius:16px;box-shadow:0 12px 40px rgba(0,0,0,.18),0 0 0 1px var(--line);padding:6px}
+.ac li{border-radius:10px}
+.ac li.on,.ac li:hover{background:var(--field)}
+.ac .ct,.ac .ad{color:var(--muted)}
+.sign .swap{align-self:end;margin-bottom:6px}
+.swap{width:38px;height:38px;padding:0;border-radius:50%;background:var(--field);color:var(--a1);font-size:17px;display:flex;align-items:center;justify-content:center}
+.swap:hover{background:color-mix(in srgb,var(--a1) 14%,var(--field))}
+.go{background:var(--a1);color:#fff;border-radius:14px;padding:13px 22px;font-weight:600;font-size:16px}
+.go:hover:not(:disabled){filter:brightness(1.08)}
+.swap:focus-visible,.go:focus-visible,a:focus-visible,.wbtn:focus-visible{outline:3px solid color-mix(in srgb,var(--a1) 50%,transparent);outline-offset:2px}
+.when{background:var(--field);border-radius:12px;padding:3px;gap:2px}
+.wbtn{color:var(--ink);font-weight:600;border-radius:10px;padding:9px 10px}
+.wbtn.on{background:var(--seg-on);color:var(--ink);box-shadow:0 1px 3px rgba(0,0,0,.16),0 0 0 .5px rgba(0,0,0,.04)}
+.sign .step{background:var(--field);color:var(--a1);border:0;border-radius:12px;font-weight:600;font-size:13px;padding:0 10px}
+.sign .step:hover{background:color-mix(in srgb,var(--a1) 14%,var(--field))}
+.timebtn{background:var(--field);color:var(--ink);border:1px solid transparent;border-radius:12px;font-weight:600}
+.timebtn:focus-visible,.timebtn[aria-expanded="true"]{border-color:var(--a1);background:var(--surface)}
+.tpop{background:var(--surface);color:var(--ink);border-radius:18px;box-shadow:0 16px 48px rgba(0,0,0,.2),0 0 0 1px var(--line)}
+.tpop .ampm button{background:var(--field);color:var(--ink);border:0;border-radius:10px;font-weight:600}
+.tpop .ampm button.on{background:var(--a1);color:#fff}
+.tpop .hm input{background:var(--field);color:var(--ink);border:2px solid transparent;border-radius:12px}
+.tpop .hm input:focus{border-color:var(--a1);background:var(--surface)}
+.tpop .hm input.bad{border-color:var(--jam)}
+.tpop .tpok{background:var(--a1);color:#fff;border-radius:12px;font-weight:600}
+.tabs{display:flex;gap:2px;padding:3px;margin:6px 0 2px;border-radius:12px;background:var(--field)}
+.tab{flex:1;border:0;background:transparent;color:var(--ink);font-weight:600;border-radius:10px;padding:9px 12px}
+.tab.on{background:var(--seg-on);color:var(--ink);border:0;box-shadow:0 1px 3px rgba(0,0,0,.16),0 0 0 .5px rgba(0,0,0,.04)}
+.best-name{border-radius:12px;box-shadow:none}
+.legend i{border-radius:50%}
+.card{border:1px solid transparent;border-radius:22px;padding:20px;box-shadow:var(--shadow)}
+.card.best{border-color:transparent;box-shadow:0 0 0 2px var(--ok),var(--shadow)}
+.tag{border-color:var(--line);background:var(--field)}
+.tag.live{border-color:transparent;background:color-mix(in srgb,var(--ok) 16%,transparent);color:#248a3d}
+.pill{background:#248a3d;color:#fff}
+.eta{letter-spacing:-.03em}
+.strip{height:26px;border-radius:9px}
+.map{border:0;border-radius:16px;box-shadow:0 0 0 1px var(--line)}
+.map-off{border-radius:16px}
+.open{color:var(--a1);font-weight:500}
+.open.off{color:var(--muted)}
+.fuelbox{border:0;border-radius:18px;box-shadow:var(--shadow);padding:12px 18px}
+.fuelgrid select,.fuelgrid input{background:var(--field);border:1px solid transparent;border-radius:10px;padding:9px 10px}
+.fuelgrid select:focus,.fuelgrid input:focus{outline:none;border-color:var(--a1)}
+.fuelgrid input[readonly]{background:transparent}
+.leaflet-container{font-family:inherit}
+@media (max-width:820px){
+  /* 출발·도착 칸의 라벨과 입력을 격자 칸으로 풀어서, 바꾸기 버튼이 두 입력 사이 정중앙(가로·세로)에 오게 한다.
+     3행: 가운데에 바꾸기 버튼, 왼쪽에 "도착" 라벨 */
+  .sign{grid-template-columns:1fr;gap:8px}
+  .sign .f-start,.sign .f-end{display:contents}
+  .sign .f-start>label{grid-row:1;margin:0}
+  .sign .f-start>.acwrap{grid-row:2}
+  .sign .swap{grid-row:3;grid-column:1;justify-self:center;align-self:center;margin:0}
+  .sign .f-end>label{grid-row:3;grid-column:1;justify-self:start;align-self:center;margin:0}
+  .sign .f-end>.acwrap{grid-row:4}
+  .sign .f-time{grid-row:5}
+  .sign .go{grid-row:6}
+  .sign .f-time,.sign .go{grid-column:1/-1}
+  .grid{grid-template-columns:1fr}
+  .legend{margin-left:0}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>빨리가유</h1>
+    <p class="note" id="statusNote">실시간 네비게이션 비교분석<br>(네이버, 카카오, 티맵)</p>
+  </header>
+
+  <form class="sign" id="form" autocomplete="off">
+    <div class="f-start"><label for="start">출발</label><div class="acwrap"><input id="start" value="킨텍스" required role="combobox" aria-autocomplete="list" aria-controls="ac-start" aria-expanded="false"><span class="addr" aria-hidden="true"></span><button type="button" class="locbtn" data-for="start" aria-label="출발을 내 위치로 입력" title="내 위치"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="7"/><circle cx="12" cy="12" r="2.5" fill="currentColor" stroke="none"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg></button><ul class="ac" id="ac-start" role="listbox" hidden></ul></div></div>
+    <button type="button" class="swap" id="swap" aria-label="출발지와 도착지 바꾸기">⇅</button>
+    <div class="f-end"><label for="end">도착</label><div class="acwrap"><input id="end" value="강남역" required role="combobox" aria-autocomplete="list" aria-controls="ac-end" aria-expanded="false"><span class="addr" aria-hidden="true"></span><button type="button" class="locbtn" data-for="end" aria-label="도착을 내 위치로 입력" title="내 위치"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="7"/><circle cx="12" cy="12" r="2.5" fill="currentColor" stroke="none"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg></button><ul class="ac" id="ac-end" role="listbox" hidden></ul></div></div>
+    <div class="f-time"><label id="whenLabel">출발 시각</label>
+      <div class="when" role="group" aria-labelledby="whenLabel">
+        <button type="button" class="wbtn on" id="wNow" data-when="now" aria-pressed="true">지금 출발</button>
+        <button type="button" class="wbtn" id="wLater" data-when="later" aria-pressed="false">나중에 출발</button>
+      </div>
+      <div class="timebox" id="timebox" hidden>
+        <button type="button" class="step" id="tMinus60" aria-label="1시간 전">−1시간</button>
+        <button type="button" class="step" id="tMinus" aria-label="30분 전">−30분</button>
+        <div class="timefield">
+          <button type="button" class="timebtn" id="timeBtn" aria-haspopup="dialog" aria-expanded="false" aria-label="출발 시각 선택"></button>
+          <input type="hidden" id="time">
+          <div class="tpop" id="timePop" role="dialog" aria-label="출발 시각 선택" hidden>
+            <div class="ampm" role="group" aria-label="오전 오후">
+              <button type="button" data-ap="am" aria-pressed="false">오전</button>
+              <button type="button" data-ap="pm" aria-pressed="false">오후</button>
+            </div>
+            <div class="hm">
+              <input id="tpH" type="number" min="1" max="12" inputmode="numeric" aria-label="시 (1~12)">
+              <span>:</span>
+              <input id="tpM" type="number" min="0" max="59" inputmode="numeric" aria-label="분 (0~59)">
+            </div>
+            <button type="button" class="tpok" id="tpOk">확인</button>
+          </div>
+        </div>
+        <button type="button" class="step" id="tPlus" aria-label="30분 후">+30분</button>
+        <button type="button" class="step" id="tPlus60" aria-label="1시간 후">+1시간</button>
+      </div>
+    </div>
+    <button type="submit" class="go" id="go">비교하기</button>
+  </form>
+
+  <details class="fuelbox" id="fuelbox">
+    <summary id="fuelSum">유류비 설정</summary>
+    <div class="fuelgrid">
+      <div><label for="fFuel">유종</label><select id="fFuel"><option value="gasoline">휘발유</option><option value="diesel">경유</option><option value="ev">전기</option></select></div>
+      <div><label for="fEco" id="fEcoLabel">연비</label><input id="fEco" type="number" min="1" max="50" step="0.1" inputmode="decimal"></div>
+      <div><label for="fPrice" id="fPriceLabel">단가</label><input id="fPrice" type="text" readonly tabindex="-1"></div>
+    </div>
+    <p class="fuelnote" id="fuelNote"></p>
+  </details>
+
+  <div class="tabs" role="tablist" aria-label="경로 옵션">
+    <button type="button" class="tab on" role="tab" aria-selected="true" data-mode="recommend">추천경로</button>
+    <button type="button" class="tab" role="tab" aria-selected="false" data-mode="fast">최소시간</button>
+    <button type="button" class="tab" role="tab" aria-selected="false" data-mode="short">최단경로</button>
+  </div>
+
+  <section class="summary" aria-live="polite">
+    <strong id="sumText"></strong>
+    <span id="sumSub" class="note"></span>
+    <div class="legend"><span><i style="background:var(--ok)"></i>원활</span><span><i style="background:var(--slow)"></i>서행</span><span><i style="background:var(--jam)"></i>정체</span><span><i style="background:var(--none)"></i>정보 없음</span></div>
+  </section>
+
+  <section class="grid" id="grid"></section>
+
+  <p class="foot">'실시간' 표시가 있는 카드만 실제 API 응답이고, '샘플' 카드는 연동 전 시뮬레이션 값입니다. 유류비는 위 '유류비 설정'(유종·공인연비·단가) 기준 추정치예요.</p>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
+<script src="/maps.js"></script>
+<script>
+const PLACES={
+ "서울역":[37.5547,126.9707],"강남역":[37.4979,127.0276],"잠실역":[37.5133,127.1001],"여의도역":[37.5215,126.9243],
+ "홍대입구역":[37.5572,126.9245],"판교역":[37.3948,127.1112],"수원역":[37.2665,127.0002],"킨텍스":[37.6688,126.7451],
+ "인천공항 제1여객터미널":[37.4492,126.4508],"김포공항":[37.5587,126.7945],"광화문":[37.5759,126.9768],"동탄역":[37.2001,127.0957],
+ "고양시청":[37.6584,126.8320],"성수역":[37.5446,127.0559],"부천역":[37.4840,126.7827]
+};
+const ROADS=["올림픽대로","강변북로","자유로","서울외곽순환고속도로","경부고속도로","동부간선도로","내부순환로","분당수서로",
+ "제2경인고속도로","인천공항고속도로","강남대로","테헤란로","남부순환로","서부간선도로","용인서울고속도로","경인고속도로"];
+const HIGHWAY=/고속도로/;
+const APPS=[
+ {id:"naver",name:"네이버지도",color:"var(--a1)",circ:1.30,bias:0.00,link:(s,e)=>`https://map.naver.com/p/search/${encodeURIComponent(e)}`},
+ {id:"kakao",name:"카카오맵",color:"var(--a2)",circ:1.27,bias:0.03,link:(s,e)=>`https://map.kakao.com/?sName=${encodeURIComponent(s)}&eName=${encodeURIComponent(e)}`},
+ {id:"tmap",name:"티맵",color:"var(--a3)",circ:1.33,bias:-0.05,link:null}
+];
+let LIVE={kakao:false,naver:false,tmap:false};
+let MODE="recommend"; // recommend(추천경로) | fast(최소시간)
+const MODE_LABEL={recommend:"추천경로",fast:"최소시간",short:"최단경로"};
+
+const $=id=>document.getElementById(id);
+const pad=n=>String(n).padStart(2,"0");
+// 출발 시각: 기본은 "지금 출발". "나중에 출발"을 누르면 시각 입력이 열리고 다음 30분 단위 시각이 들어간다
+let WHEN="now"; // now | later
+const nextSlot=()=>{const d=new Date(),m=d.getHours()*60+d.getMinutes(),t=Math.ceil((m+1)/30)*30%1440;return`${pad(Math.floor(t/60))}:${pad(t%60)}`};
+// 선택한 출발 시각은 숨은 #time에 "HH:MM"(24시간)으로 두고, 버튼에는 "오후 2:30"처럼 보여준다
+const fmtAP=v=>{const[h,m]=v.split(":").map(Number);return`${h<12?"오전":"오후"} ${h%12||12}:${pad(m)}`};
+function setTime(v){$("time").value=v;$("timeBtn").textContent=fmtAP(v)}
+setTime(nextSlot());
+function setWhen(w){
+  WHEN=w;
+  $("wNow").classList.toggle("on",w==="now");$("wNow").setAttribute("aria-pressed",String(w==="now"));
+  $("wLater").classList.toggle("on",w==="later");$("wLater").setAttribute("aria-pressed",String(w==="later"));
+  $("timebox").hidden=w==="now";
+}
+// 현재 입력된 시각에서 30분씩 이동 (자정을 넘기면 하루 단위로 돌아감)
+function shiftTime(min){
+  const [h,m]=($("time").value||nextSlot()).split(":").map(Number);
+  const t=((h*60+m+min)%1440+1440)%1440;
+  setTime(`${pad(Math.floor(t/60))}:${pad(t%60)}`);
+}
+
+// ---- 출발 시각 → 카카오 departure 파라미터 ----
+function departureInfo(t){
+  const now=new Date();const [h,m]=t.split(":").map(Number);
+  const d=new Date(now);d.setHours(h,m,0,0);
+  const diff=(d-now)/60000;
+  if(Math.abs(diff)<=5) return {param:"now",date:now,label:"지금 출발"};
+  if(diff<-5) d.setDate(d.getDate()+1);
+  const param=`${d.getFullYear()}${pad(d.getMonth()+1)}${pad(d.getDate())}${pad(d.getHours())}${pad(d.getMinutes())}`;
+  const tomorrow=d.getDate()!==now.getDate();
+  return {param,date:d,label:`${tomorrow?"내일 ":""}${pad(d.getHours())}:${pad(d.getMinutes())} 출발`};
+}
+
+// ---- 시뮬레이션 (연동 전 앱) ----
+function hash(s){let h=2166136261;for(const c of s){h^=c.charCodeAt(0);h=Math.imul(h,16777619)}return h>>>0}
+function rng(seed){return()=>{seed=(seed+0x6D2B79F5)|0;let t=Math.imul(seed^seed>>>15,1|seed);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
+function coord(name,known){if(known)return known;const k=name.trim();if(PLACES[k])return PLACES[k];const r=rng(hash(k));return[37.35+r()*0.4,126.75+r()*0.45]}
+function km(a,b){const R=6371,d=x=>x*Math.PI/180;const dLa=d(b[0]-a[0]),dLo=d(b[1]-a[1]);
+  const h=Math.sin(dLa/2)**2+Math.cos(d(a[0]))*Math.cos(d(b[0]))*Math.sin(dLo/2)**2;return 2*R*Math.asin(Math.sqrt(h))}
+function rush(date){const x=date.getHours()+date.getMinutes()/60;
+  if(x>=7&&x<9.5)return .75;if(x>=17&&x<20)return .8;if(x>=11&&x<14)return .45;if(x>=23||x<6)return .1;return .35}
+const SPEED={ok:62,slow:28,jam:11};
+function simulate(app,s,e,date,coords){
+  const straight=Math.max(km(coord(s,coords?.o),coord(e,coords?.d)),1.5);
+  const r=rng(hash(s+"|"+e+"|"+app.id));
+  const dist=straight*(app.circ+r()*0.08);
+  const load=Math.min(.95,Math.max(.05,rush(date)+app.bias+(r()-.5)*.1));
+  const pool=[...ROADS].sort(()=>r()-.5);
+  const n=Math.min(4,Math.max(2,Math.round(dist/12)+1));
+  const legs=[];let left=dist;
+  for(let i=0;i<n;i++){const len=i===n-1?left:Math.max(.8,left*(.25+r()*.35));left-=len;
+    const p=r();legs.push({road:pool[i],len,st:p<load*.45?"jam":p<load*.95?"slow":"ok"})}
+  const cells=[];legs.forEach(l=>{for(let i=0;i<Math.max(1,Math.round(l.len));i++){const q=r();cells.push(q<.6?l.st:(q<.8?"slow":(load>.5?"jam":"ok")))}});
+  let min=3+r()*3;const seg=dist/cells.length;cells.forEach(st=>min+=seg/SPEED[st]*60);
+  const strip=cells.map(st=>({st,w:1/cells.length}));
+  const share={ok:0,slow:0,jam:0,none:0};strip.forEach(x=>share[x.st]+=x.w);
+  const toll=legs.some(l=>HIGHWAY.test(l.road))?Math.round((900+dist*45)/100)*100:0;
+  return{source:"sample",dist,min:Math.round(min),toll,strip,share,legs};
+}
+
+// ---- 렌더링 ----
+const won=n=>n?n.toLocaleString("ko-KR")+"원":"무료";
+// ---- 유류비 설정: 유종 + 연비(직접 입력). 단가는 오피넷 전국 평균(서버 /api/fuel) ----
+const FUELS={
+  gasoline:{name:"휘발유",eco:"km/L",price:"원/L",cost:"예상 유류비",defEco:12},
+  diesel:{name:"경유",eco:"km/L",price:"원/L",cost:"예상 유류비",defEco:13},
+  ev:{name:"전기",eco:"km/kWh",price:"원/kWh",cost:"예상 충전비",defEco:5}
+};
+let PRICES={gasoline:1858,diesel:1843,ev:300};
+let PRICE_NOTE="";
+let F={fuel:"gasoline",eco:{}}; // eco: 유종별로 입력한 연비
+try{Object.assign(F,JSON.parse(localStorage.getItem("fuelPrefs")||"{}"))}catch(_){}
+if(!FUELS[F.fuel])F.fuel="gasoline";
+if(typeof F.eco!=="object"||F.eco===null)F.eco={};
+const saveF=()=>{try{localStorage.setItem("fuelPrefs",JSON.stringify({fuel:F.fuel,eco:F.eco}))}catch(_){}};
+const ecoNow=()=>F.eco[F.fuel]>0?F.eco[F.fuel]:FUELS[F.fuel].defEco;
+const fuel=d=>Math.round(d/ecoNow()*PRICES[F.fuel]/100)*100;
+const fuelSummary=()=>{const fu=FUELS[F.fuel];return `유류비 설정 · ${fu.name} · ${ecoNow()}${fu.eco} · ${PRICES[F.fuel].toLocaleString("ko-KR")}${fu.price}`};
+function renderFuelUI(){
+  const fu=FUELS[F.fuel];
+  $("fFuel").value=F.fuel;
+  $("fEcoLabel").textContent=`연비 (${fu.eco})`;
+  $("fEco").value=ecoNow();
+  $("fPriceLabel").textContent=`단가 (${fu.price})`;
+  $("fPrice").value=PRICES[F.fuel].toLocaleString("ko-KR");
+  $("fuelSum").textContent=fuelSummary();
+  $("fuelNote").textContent=F.fuel==="ev"
+    ?"전기 단가는 오피넷 대상이 아니라 참고값(300원/kWh)이에요. 연비는 내 차의 실제 전비를 입력하세요."
+    :`단가는 ${PRICE_NOTE||"오피넷 전국 평균"} 기준이에요. 연비는 내 차의 실제 연비를 입력하세요.`;
+}
+function onFuelChange(){saveF();renderFuelUI();if(LAST)draw(LAST.results,LAST.ctx)}
+$("fFuel").addEventListener("change",e=>{F.fuel=e.target.value;onFuelChange()});
+$("fEco").addEventListener("input",e=>{
+  const n=Number(e.target.value);if(!(n>0))return;
+  F.eco[F.fuel]=n;saveF();
+  $("fuelSum").textContent=fuelSummary();
+  if(LAST)draw(LAST.results,LAST.ctx);
+});
+fetch("/api/fuel").then(r=>r.json()).then(p=>{
+  PRICES={gasoline:p.gasoline,diesel:p.diesel,ev:p.ev};
+  PRICE_NOTE=p.source==="opinet"?`오피넷 전국 평균(${p.asOf})`:`오피넷 전국 평균(${p.asOf} 기준 기본값)`;
+}).catch(()=>{}).finally(()=>{renderFuelUI();if(LAST)draw(LAST.results,LAST.ctx)});
+renderFuelUI();
+const STC={ok:"var(--ok)",slow:"var(--slow)",jam:"var(--jam)",none:"var(--none)"};
+const STN={ok:"원활",slow:"서행",jam:"정체",none:"정보 없음"};
+const fmt=m=>m>=60?`${Math.floor(m/60)}<small>시간</small> ${m%60}<small>분</small>`:`${m}<small>분</small>`;
+const arrival=(date,m)=>{const d=new Date(date.getTime()+m*60000);return `${pad(d.getHours())}:${pad(d.getMinutes())} 도착 예정`};
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+
+// 정체 띠: 구간을 색으로 그리고, 띠 안에 원활·서행·정체 비율을 한 줄로 같이 넣는다
+// (비율이 0%인 상태는 빼고, 정보 없음이 있으면 마지막에 붙임)
+function stripHtml(r,pc){
+  const runs=[];
+  for(const x of r.strip){const last=runs[runs.length-1];if(last&&last.st===x.st)last.w+=x.w;else runs.push({st:x.st,w:x.w})}
+  const parts=["ok","slow","jam","none"].filter(k=>pc(k)>0||k==="ok"&&r.strip.length===0).map(k=>`<b class="p-${k}"><i style="background:${STC[k]}"></i>${STN[k]} ${pc(k)}%</b>`);
+  const summary=`원활 ${pc("ok")}%, 서행 ${pc("slow")}%, 정체 ${pc("jam")}%${pc("none")?`, 정보 없음 ${pc("none")}%`:""}`;
+  const cells=runs.map(run=>`<span style="flex:${run.w};background:${STC[run.st]}"></span>`).join("");
+  return `<div class="strip" role="img" aria-label="정체 현황: ${summary}" title="${summary}">${cells}<div class="strip-label">${parts.join("")}</div></div>`;
+}
+
+function card(app,r,ctx,best){
+  const link=app.link?`<a class="open" href="${app.link(ctx.s,ctx.e)}" target="_blank" rel="noopener">${app.name}에서 열기 ↗</a>`:`<span class="open off">티맵은 모바일 앱에서 확인</span>`;
+  const head=`<div class="head"><span class="dot" style="background:${app.color}"></span><span class="name">${app.name}</span>
+    <span class="tag ${r&&r.source!=="sample"?"live":""}">${r&&r.source!=="sample"?"실시간":"샘플"}</span>${best?'<span class="pill">최단 시간</span>':""}</div>`;
+  if(r==="loading") return head+`<p class="msg">경로를 불러오는 중…</p>`;
+  if(r&&r.error) return head+`<p class="msg err">${esc(r.error)}</p>${link}`;
+  const pc=k=>Math.round(r.share[k]*100);
+  return head+`
+   <div><div class="eta">${fmt(r.min)}</div><div class="arrive">${arrival(ctx.date,r.min)}</div></div>
+   <div class="stats"><div>거리<b>${r.dist.toFixed(1)}km</b></div><div>통행료<b>${won(r.toll)}</b></div><div>${FUELS[F.fuel].cost}<b>${won(fuel(r.dist))}</b></div></div>
+   ${stripHtml(r,pc)}
+   ${r.path&&r.path.length?`<div class="map" id="map-${app.id}" role="img" aria-label="${app.name} 경로 지도"></div>`:`<div class="map-off">샘플 값이라 지도는 실시간 연동 후 표시돼요</div>`}
+   ${link}`;
+}
+
+// ---- 경로 지도: 앱별 지도 SDK(public/maps.js), 실패하면 OpenStreetMap으로 대체 ----
+let mapToken=0;
+function drawMaps(results){
+  const token=++mapToken;
+  RouteMaps.reset();
+  const css=getComputedStyle(document.documentElement);
+  const col=k=>css.getPropertyValue(`--${k}`).trim()||"#888";
+  const colors={ok:col("ok"),slow:col("slow"),jam:col("jam"),none:col("none")};
+  APPS.forEach(a=>{
+    const r=results[a.id],el=$("map-"+a.id);
+    if(!el||!r||!r.path||!r.path.length)return;
+    RouteMaps.draw(a.id,el,r.path,colors,STN).then(res=>{
+      if(token!==mapToken||!el.isConnected||!res.fallback)return;
+      el.insertAdjacentHTML("afterend",`<p class="msg">${a.name} 지도를 불러오지 못해 기본 지도(OpenStreetMap)로 표시했어요: ${esc(res.reason)}</p>`);
+    });
+  });
+}
+
+let LAST=null; // 유류비 설정을 바꿀 때 다시 그리기 위해 마지막 결과를 기억
+// 받침이 있으면 "이", 없으면 "가" (예: 카카오맵이, 네이버지도가)
+function josa(word,withBatchim,without){
+  const c=word.charCodeAt(word.length-1)-0xAC00;
+  return c>=0&&c<=11171&&c%28!==0?withBatchim:without;
+}
+function draw(results,ctx){
+  LAST={results,ctx};
+  const ok=APPS.filter(a=>results[a.id]&&results[a.id].min!=null);
+  const best=ok.length?ok.reduce((x,y)=>results[y.id].min<results[x.id].min?y:x):null;
+  const g=$("grid");g.innerHTML="";
+  APPS.forEach(a=>{const c=document.createElement("article");c.className="card"+(best===a&&ok.length>1?" best":"");
+    c.innerHTML=card(a,results[a.id],ctx,best===a&&ok.length>1);g.appendChild(c)});
+  drawMaps(results);
+  if(best&&ok.length>1){
+    const worst=ok.reduce((x,y)=>results[y.id].min>results[x.id].min?y:x);
+    const gap=results[worst.id].min-results[best.id].min;
+    const mixed=ok.some(a=>results[a.id].source==="sample");
+    $("sumText").innerHTML=`<span class="sum-route">${esc(ctx.s)} → ${esc(ctx.e)}</span><span class="sum-verdict"><mark class="best-name best-${best.id}">${best.name}</mark>${josa(best.name,"이","가")} 가장 빨라요</span>`;
+    // 출발시간 · 경로 옵션 · "OO보다 N분 빠름" 세 가지만 순서대로. 나머지 참고 문구는 마우스를 올리면 보이게
+    $("sumSub").textContent=[ctx.when,ctx.modeLabel,gap>0?`${worst.name}보다 ${gap}분 빠름`:"세 앱 예상 시간이 같아요"].join(" · ");
+    $("sumSub").title=[...ctx.notes,...(mixed?["샘플 값이 섞인 비교"]:[])].join(" · ");
+  } else {
+    $("sumText").innerHTML=`<span class="sum-route">${esc(ctx.s)} → ${esc(ctx.e)}</span>`;$("sumSub").textContent=[ctx.when,ctx.modeLabel].join(" · ");$("sumSub").title=ctx.notes.join(" · ");
+  }
+}
+
+async function run(){
+  const s=$("start").value.trim(),e=$("end").value.trim();if(!s||!e)return;
+  if(WHEN==="later"&&!/^\d{2}:\d{2}$/.test($("time").value))setTime(nextSlot());
+  const dep=WHEN==="now"?{param:"now",date:new Date(),label:"지금 출발"}:departureInfo($("time").value||nextSlot());
+  const ctx={s,e,date:dep.date,when:dep.label,modeLabel:MODE_LABEL[MODE],notes:[]};
+  const results={};
+  APPS.forEach(a=>results[a.id]=LIVE[a.id]?"loading":simulate(a,s,e,dep.date));
+  draw(results,ctx);
+  const liveIds=["kakao","naver","tmap"].filter(id=>LIVE[id]);
+  if(!liveIds.length)return;
+  $("go").disabled=true;
+  let coords=null;
+  await Promise.all(liveIds.map(async id=>{
+    try{
+      const res=await fetch(`/api/route/${id}?${new URLSearchParams(placeParams({from:s,to:e,departure:dep.param,mode:MODE}))}`);
+      const body=await res.json();
+      if(!res.ok)throw new Error(body.error||`오류 ${res.status}`);
+      results[id]=body.route;
+      if(!coords){
+        // 실제 좌표를 알았으니 샘플 카드도 같은 좌표로 다시 계산
+        coords={o:[body.origin.y,body.origin.x],d:[body.destination.y,body.destination.x]};
+        // 직접 입력한 장소는 조회된 주소를 오른쪽에 표시 (그 사이 입력이 바뀌었으면 건너뜀)
+        [["start",s,body.origin],["end",e,body.destination]].forEach(([id,text,pl])=>{
+          if(!SEL[id]&&$(id).value.trim()===text&&pl.address)showAddr(id,pl.address);
+        });
+      }
+    }catch(err){results[id]={error:err.message}}
+  }));
+  if(coords)APPS.forEach(a=>{if(!LIVE[a.id])results[a.id]=simulate(a,s,e,dep.date,coords)});
+  if(LIVE.naver&&dep.param!=="now")ctx.notes.push("네이버는 현재 교통 기준");
+  if(LIVE.naver&&MODE==="short")ctx.notes.push("네이버는 후보 3개 중 최단");
+  $("go").disabled=false;
+  draw(results,ctx);
+}
+
+// ---- 장소 자동완성: 카카오 장소 검색(/api/places). 고르면 주소를 입력칸 오른쪽에 같이 보여준다 ----
+const SEL={}; // 자동완성에서 고른 장소 { start|end: {name,address,x,y} }
+function showAddr(id,text){
+  const input=$(id),wrap=input.parentElement,el=wrap.querySelector(".addr");
+  el.textContent=text||"";
+  input.style.paddingRight=text?`${Math.min(el.offsetWidth,wrap.offsetWidth*0.48)+56}px`:"";
+}
+function setupAC(id){
+  const input=$(id),list=input.parentElement.querySelector(".ac");
+  let items=[],active=-1,timer=null,seq=0;
+  const close=()=>{list.hidden=true;active=-1;input.setAttribute("aria-expanded","false")};
+  const render=()=>{
+    list.innerHTML=items.map((p,i)=>`<li role="option" data-i="${i}" class="${i===active?"on":""}"><span class="nm">${esc(p.name)}</span>${p.category?`<span class="ct">${esc(p.category)}</span>`:""}<span class="ad">${esc(p.address||"")}</span></li>`).join("");
+    list.hidden=!items.length;
+    input.setAttribute("aria-expanded",String(!list.hidden));
+  };
+  const pick=i=>{const p=items[i];if(!p)return;seq++;input.value=p.name;SEL[id]=p;showAddr(id,p.address);close()};
+  input.addEventListener("input",()=>{
+    delete SEL[id];showAddr(id,"");
+    clearTimeout(timer);
+    const q=input.value.trim();
+    if(!q){seq++;items=[];close();return}
+    timer=setTimeout(async()=>{
+      const my=++seq;
+      try{
+        const r=await fetch(`/api/places?q=${encodeURIComponent(q)}`);
+        if(!r.ok)return;
+        const body=await r.json();
+        if(my!==seq||document.activeElement!==input)return;
+        items=body.places||[];active=-1;render();
+      }catch(_){}
+    },180);
+  });
+  input.addEventListener("keydown",ev=>{
+    if(list.hidden)return;
+    if(ev.key==="ArrowDown"){ev.preventDefault();active=(active+1)%items.length;render()}
+    else if(ev.key==="ArrowUp"){ev.preventDefault();active=(active-1+items.length)%items.length;render()}
+    else if(ev.key==="Enter"&&active>=0){ev.preventDefault();pick(active)}
+    else if(ev.key==="Escape"){close()}
+  });
+  list.addEventListener("mousedown",ev=>{const li=ev.target.closest("li");if(li){ev.preventDefault();pick(Number(li.dataset.i))}});
+  input.addEventListener("blur",()=>setTimeout(close,100));
+  input.addEventListener("focus",()=>{if(items.length&&input.value.trim())render()});
+}
+setupAC("start");setupAC("end");
+
+// ---- 내 위치 버튼: 브라우저 위치 → 카카오 좌표→주소 변환 → 입력칸에 "내 위치" + 주소 ----
+function flashAddr(id,msg){
+  const el=$(id).parentElement.querySelector(".addr"),prev=el.textContent;
+  el.classList.add("err");el.textContent=msg;
+  setTimeout(()=>{el.classList.remove("err");if(el.textContent===msg)el.textContent=prev},4000);
+}
+document.querySelectorAll(".locbtn").forEach(btn=>{
+  const id=btn.dataset.for;
+  btn.addEventListener("click",()=>{
+    if(!navigator.geolocation){flashAddr(id,"이 브라우저는 위치를 지원하지 않아요");return}
+    btn.disabled=true;btn.classList.add("busy");
+    const done=()=>{btn.disabled=false;btn.classList.remove("busy")};
+    navigator.geolocation.getCurrentPosition(async pos=>{
+      const x=Number(pos.coords.longitude.toFixed(6)),y=Number(pos.coords.latitude.toFixed(6));
+      let address="";
+      try{const r=await fetch(`/api/geocode?${new URLSearchParams({x,y})}`);if(r.ok)address=(await r.json()).address||""}catch(_){}
+      const p={name:"내 위치",address,x,y,category:""};
+      $(id).value=p.name;SEL[id]=p;
+      showAddr(id,address||`${y.toFixed(4)}, ${x.toFixed(4)}`);
+      done();
+    },err=>{
+      done();
+      flashAddr(id,err.code===1?"위치 권한이 거부됐어요":err.code===3?"위치 확인 시간이 초과됐어요":"위치를 가져오지 못했어요");
+    },{timeout:10000,maximumAge:60000});
+  });
+});
+// 자동완성에서 고른 장소면 좌표까지 같이 보내서 같은 이름의 다른 장소로 바뀌지 않게 한다
+function placeParams(q){
+  [["from","start"],["to","end"]].forEach(([k,id])=>{
+    const p=SEL[id];
+    if(p&&p.name===$(id).value.trim()){q[k+"X"]=p.x;q[k+"Y"]=p.y;q[k+"Name"]=p.name;q[k+"Addr"]=p.address||""}
+  });
+  return q;
+}
+
+$("form").addEventListener("submit",ev=>{ev.preventDefault();run()});
+document.querySelectorAll(".tab").forEach(b=>b.addEventListener("click",()=>{
+  if(b.dataset.mode===MODE)return;
+  MODE=b.dataset.mode;
+  document.querySelectorAll(".tab").forEach(t=>{const on=t===b;t.classList.toggle("on",on);t.setAttribute("aria-selected",on)});
+  run();
+}));
+$("tMinus").addEventListener("click",()=>{shiftTime(-30);run()});
+$("tPlus").addEventListener("click",()=>{shiftTime(30);run()});
+$("tMinus60").addEventListener("click",()=>{shiftTime(-60);run()});
+$("tPlus60").addEventListener("click",()=>{shiftTime(60);run()});
+$("wNow").addEventListener("click",()=>{if(WHEN==="now")return;setWhen("now");run()});
+$("wLater").addEventListener("click",()=>{
+  if(WHEN==="later")return;
+  setTime(nextSlot());setWhen("later");run();
+});
+// ---- 출발 시각 선택 박스: 오전/오후 · 시 · 분을 직접 입력 ----
+let AP="am";
+function setAP(ap){
+  AP=ap;
+  document.querySelectorAll("#timePop [data-ap]").forEach(b=>{const on=b.dataset.ap===ap;b.classList.toggle("on",on);b.setAttribute("aria-pressed",String(on))});
+}
+function openPop(){
+  const[h,m]=$("time").value.split(":").map(Number);
+  setAP(h<12?"am":"pm");
+  $("tpH").value=h%12||12;$("tpM").value=pad(m);
+  ["tpH","tpM"].forEach(id=>$(id).classList.remove("bad"));
+  $("timePop").hidden=false;$("timeBtn").setAttribute("aria-expanded","true");
+  $("tpH").focus();$("tpH").select();
+}
+function closePop(){$("timePop").hidden=true;$("timeBtn").setAttribute("aria-expanded","false")}
+function applyPop(){
+  const h=parseInt($("tpH").value,10),m=parseInt($("tpM").value,10);
+  const hOk=h>=1&&h<=12,mOk=m>=0&&m<=59;
+  $("tpH").classList.toggle("bad",!hOk);$("tpM").classList.toggle("bad",!mOk);
+  if(!hOk){$("tpH").focus();return}
+  if(!mOk){$("tpM").focus();return}
+  setTime(`${pad(h%12+(AP==="pm"?12:0))}:${pad(m)}`);
+  closePop();run();
+}
+$("timeBtn").addEventListener("click",()=>{$("timePop").hidden?openPop():closePop()});
+document.querySelectorAll("#timePop [data-ap]").forEach(b=>b.addEventListener("click",()=>setAP(b.dataset.ap)));
+$("tpOk").addEventListener("click",applyPop);
+$("tpH").addEventListener("input",()=>{
+  $("tpH").classList.remove("bad");
+  const v=$("tpH").value;
+  if(v.length>=2||Number(v)>1){$("tpM").focus();$("tpM").select()} // 시를 다 쳤으면 분으로
+});
+$("tpM").addEventListener("input",()=>$("tpM").classList.remove("bad"));
+$("timePop").addEventListener("keydown",ev=>{
+  if(ev.key==="Enter"){ev.preventDefault();if(ev.target.id==="tpH"&&$("tpM")){$("tpM").focus();$("tpM").select()}else applyPop()}
+  else if(ev.key==="Escape"){closePop();$("timeBtn").focus()}
+});
+document.addEventListener("mousedown",ev=>{if(!$("timePop").hidden&&!ev.target.closest(".timefield"))closePop()});
+$("swap").addEventListener("click",()=>{
+  const a=$("start"),b=$("end");
+  const addrA=a.parentElement.querySelector(".addr").textContent,addrB=b.parentElement.querySelector(".addr").textContent;
+  [a.value,b.value]=[b.value,a.value];
+  const sa=SEL.start,sb=SEL.end;delete SEL.start;delete SEL.end;
+  if(sb)SEL.start=sb;if(sa)SEL.end=sa;
+  showAddr("start",addrB);showAddr("end",addrA);
+  run();
+});
+
+Promise.all([
+  fetch("/api/config").then(r=>r.json()).then(c=>RouteMaps.init(c)).catch(()=>{}),
+  fetch("/api/status").then(r=>r.json()).then(st=>{LIVE=st}).catch(()=>{})
+]).finally(()=>{
+  const on=APPS.filter(a=>LIVE[a.id]).map(a=>a.name);
+  // 연동된 앱이 하나도 없을 때만 안내 문구로 바꾼다
+  if(!on.length)$("statusNote").textContent="아직 연동된 앱이 없어 모든 카드가 샘플 값이에요. .env에 API 키를 넣고 서버를 다시 켜 주세요.";
+  run();
+});
+</script>
+</body>
+</html>
