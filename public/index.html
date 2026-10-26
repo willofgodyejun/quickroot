@@ -135,6 +135,17 @@ body{-webkit-font-smoothing:antialiased}
 h1{font-weight:700;letter-spacing:-.025em}
 .note{font-size:14px}
 .summary .note{text-align:left}
+.brand{display:flex;align-items:center;justify-content:center;gap:16px}
+.logo{flex:none}
+.brandtext h1{font-size:44px;line-height:1.1;text-align:left}
+.brandtext .note{text-align:left;margin:4px 0 0}
+.logo .sp{animation:logoSpeed .6s linear infinite}
+.logo .bob{animation:logoBob .5s ease-in-out infinite}
+.logo .wheel{transform-box:fill-box;transform-origin:center;animation:logoSpin .45s linear infinite}
+@keyframes logoSpeed{0%{opacity:0;transform:translateX(10px)}40%{opacity:1}100%{opacity:0;transform:translateX(-14px)}}
+@keyframes logoBob{0%,100%{transform:translate(14px,14px) scale(.78)}50%{transform:translate(14px,11.5px) scale(.78)}}
+@keyframes logoSpin{to{transform:rotate(360deg)}}
+@media (prefers-reduced-motion:reduce){.logo .sp,.logo .bob,.logo .wheel{animation:none}.logo .sp{opacity:.8}}
 .sign{border-radius:22px;padding:20px;box-shadow:var(--shadow);gap:12px}
 .sign label{font-size:13px;font-weight:500;letter-spacing:0;opacity:1;color:var(--muted);margin-bottom:6px}
 .sign input{background:var(--field);color:var(--ink);border:1px solid transparent;border-radius:12px;padding:12px 14px}
@@ -232,9 +243,27 @@ h1{font-weight:700;letter-spacing:-.025em}
 </head>
 <body>
 <div class="wrap">
-  <header>
-    <h1>빨리가유</h1>
-    <p class="note" id="statusNote">실시간 네비게이션 비교분석<br>(네이버, 카카오, 티맵)</p>
+  <header class="brand">
+    <svg class="logo" width="72" height="72" viewBox="0 0 72 72" aria-hidden="true">
+      <rect width="72" height="72" rx="18" fill="#0071e3"/>
+      <g class="sp"><line x1="8" y1="28" x2="20" y2="28" stroke="#fff" stroke-width="2.4" stroke-linecap="round"/></g>
+      <g class="sp" style="animation-delay:.25s"><line x1="6" y1="38" x2="20" y2="38" stroke="#fff" stroke-width="2.4" stroke-linecap="round"/></g>
+      <g class="sp" style="animation-delay:.45s"><line x1="9" y1="48" x2="20" y2="48" stroke="#fff" stroke-width="2.4" stroke-linecap="round"/></g>
+      <g class="bob" transform="translate(14 14) scale(.78)">
+        <rect x="2" y="18" width="64" height="18" rx="9" fill="#fff"/>
+        <path d="M14 18 L21 7 Q22.5 4.5 26 4.5 L43 4.5 Q46.5 4.5 48 7 L55 18 Z" fill="#fff"/>
+        <path d="M21 17 L26 8.5 L45 8.5 L50 17 Z" fill="#0071e3"/>
+        <circle cx="31" cy="12.5" r="2" fill="#fff"/><circle cx="40" cy="12.5" r="2" fill="#fff"/>
+        <path d="M33.5 15 Q35.5 16.8 37.5 15" stroke="#fff" stroke-width="1.3" fill="none" stroke-linecap="round"/>
+        <circle cx="64" cy="25" r="2.6" fill="#ffd54a"/>
+        <circle cx="18" cy="37" r="6.5" fill="#0a3d7a"/><g class="wheel"><circle cx="18" cy="37" r="3" fill="#fff"/><line x1="18" y1="34" x2="18" y2="40" stroke="#0a3d7a" stroke-width="1.4"/></g>
+        <circle cx="52" cy="37" r="6.5" fill="#0a3d7a"/><g class="wheel"><circle cx="52" cy="37" r="3" fill="#fff"/><line x1="52" y1="34" x2="52" y2="40" stroke="#0a3d7a" stroke-width="1.4"/></g>
+      </g>
+    </svg>
+    <div class="brandtext">
+      <h1>빨리가유</h1>
+      <p class="note" id="statusNote">실시간 네비게이션 비교분석<br>(네이버, 카카오, 티맵)</p>
+    </div>
   </header>
 
   <form class="sign" id="form" autocomplete="off">
