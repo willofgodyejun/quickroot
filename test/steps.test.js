@@ -29,7 +29,8 @@ test("단계가 많으면 가장 짧은 단계를 더 긴 이웃에 합침", () 
 test("빈 입력·거리 0 구간 처리", () => {
   assert.deepEqual(buildSteps([]), []);
   assert.deepEqual(buildSteps([seg("a", 0, 0)]), []);
-  assert.equal(buildSteps([seg("", 1000, 60)])[0].road, "이름 없는 도로");
+  assert.equal(buildSteps([seg("", 1000, 60)])[0].road, "출발지 주변");
+  assert.equal(buildSteps([seg("a", 1000, 60), seg("", 100, 5), seg("b", 1000, 60)]).length, 2); // 중간의 이름 없는 짧은 구간은 앞에 합침
 });
 
 test("네이버: guide 시간을 구간에 배분하고, guide가 없으면 길이/속도 비율로 나눔", () => {

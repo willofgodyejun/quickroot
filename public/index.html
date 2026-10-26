@@ -673,8 +673,11 @@ function draw(results,ctx){
   // 네이버는 출발 시각 지정이 안 돼서, 나중에 출발이면 현재 교통 기준 → 다른 앱과 같은 기준이 아니라 순위에서 뺀다
   const ok=APPS.filter(a=>results[a.id]&&results[a.id].min!=null&&!(ctx.future&&a.id==="naver"));
   const best=ok.length?ok.reduce((x,y)=>results[y.id].min<results[x.id].min?y:x):null;
+  // 비교 결과는 가장 빠른 앱부터 차례로. 순위에 못 넣는 카드(오류, 불러오는 중, 현재 교통 기준인 네이버)는 뒤로
+  const rankTime=a=>ok.includes(a)?results[a.id].min:Infinity;
+  const order=[...APPS].sort((x,y)=>rankTime(x)-rankTime(y)||APPS.indexOf(x)-APPS.indexOf(y));
   const g=$("grid");g.innerHTML="";
-  APPS.forEach(a=>{const c=document.createElement("article");c.className="card"+(best===a&&ok.length>1?" best":"");
+  order.forEach(a=>{const c=document.createElement("article");c.className="card"+(best===a&&ok.length>1?" best":"");
     c.innerHTML=card(a,results[a.id],ctx,best===a&&ok.length>1);g.appendChild(c)});
   drawMaps(results);
   if(best&&ok.length>1){
