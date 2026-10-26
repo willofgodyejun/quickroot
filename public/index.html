@@ -208,6 +208,9 @@ h1{font-weight:700;letter-spacing:-.025em}
 .fuelnote{display:flex;align-items:center;gap:10px;font-size:12px;color:var(--muted);margin:8px 0 0}
 .linkbtn{flex:none;font:inherit;font-size:12px;font-weight:600;border:0;background:transparent;color:var(--a1);cursor:pointer;padding:0}
 .fuelnote[hidden]{display:none}
+.steptext{margin:0;font-size:13px;line-height:1.75;color:var(--muted)}
+.stt{font-weight:700}
+.stt-ok{color:var(--ok)}.stt-slow{color:var(--slow)}.stt-jam{color:var(--jam)}.stt-none{color:var(--muted)}
 .tag.ref{border-color:color-mix(in srgb,var(--slow) 55%,transparent);color:var(--slow);background:color-mix(in srgb,var(--slow) 12%,transparent)}
 .refnote{margin:-4px 0 0;font-size:12px;color:var(--slow)}
 .linkbtn:hover{text-decoration:underline}
@@ -610,6 +613,19 @@ function stripHtml(r,pc){
   return `<div class="strip" role="img" aria-label="정체 현황: ${summary}" title="${summary}">${cells}<div class="strip-label">${parts.join("")}</div></div>`;
 }
 
+// 분기점(도로가 바뀌는 곳)마다 교통 상태와 소요시간을 이어 쓴 줄글
+const STATE_WORD={ok:["원활","해서"],slow:["서행","이라"],jam:["정체","라"],none:["정보 없음","이라"]};
+function stepsProse(r){
+  const st=r&&r.steps;
+  if(!st||!st.length)return"";
+  const parts=st.map((s,i)=>{
+    const [w,tail]=STATE_WORD[s.st]||STATE_WORD.none;
+    const time=s.min<1?"1분 미만":`약 ${s.min}분`;
+    const lead=i===0?"":i===st.length-1?"마지막으로 ":"이어서 ";
+    return`${lead}${esc(s.road)} ${s.km}km는 <b class="stt stt-${s.st}">${w}</b>${tail} ${time}`;
+  });
+  return`<p class="steptext">${parts.join(", ")} 걸려요.</p>`;
+}
 function card(app,r,ctx,best){
   const ref=ctx.future&&app.id==="naver"; // 네이버는 출발 시각 미지원
   const L=app.links(ctx);
@@ -624,6 +640,7 @@ function card(app,r,ctx,best){
    <div class="stats"><div>거리<b>${r.dist.toFixed(1)}km</b></div><div>통행료<b>${won(r.toll)}</b></div><div>${FUELS[F.fuel].cost}<b>${won(fuel(r.dist))}</b></div></div>
    ${stripHtml(r,pc)}
    ${r.path&&r.path.length?`<div class="map" id="map-${app.id}" role="img" aria-label="${app.name} 경로 지도"></div>`:`<div class="map-off">샘플 값이라 지도는 실시간 연동 후 표시돼요</div>`}
+   ${stepsProse(r)}
    <div class="maprow">${r.path&&r.path.length?`<button type="button" class="fitbtn" data-fit="${app.id}">경로 전체 보기</button>`:"<span></span>"}${link}</div>`;
 }
 
