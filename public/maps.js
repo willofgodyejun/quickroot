@@ -7,6 +7,8 @@ const RouteMaps = (() => {
   const fits = {};      // 지도 id → 경로 전체 보기 함수
   const maps = {};      // 지도 id → SDK 지도 객체
   const observers = [];
+  const kinds = {};     // 지도 id → "naver" | "kakao" | "tmap" | "leaflet"
+  const hl = {};        // 지도 id → 구간 강조용으로 그린 선 목록
 
   function loadScript(src) {
     if (!loaded[src]) {
@@ -74,7 +76,7 @@ const RouteMaps = (() => {
     const fit = () => map.fitBounds(bounds, { top: 8, right: 8, bottom: 8, left: 8 });
     fit();
     setTimeout(fit, 400);
-    fits[el.id] = fit; maps[el.id] = map; watchResize(el, fit);
+    fits[el.id] = fit; maps[el.id] = map; kinds[el.id] = "naver"; watchResize(el, fit);
     await new Promise((r) => setTimeout(r, 1500)); // 인증 결과는 지도 생성 직후 비동기로 온다
     // 인증이 거절되면 콜백이 오거나, SDK가 지도 자리에 오류 문구를 그려 넣는다
     const failed = naverAuthError || (/인증이 실패|인증 실패|Open API/.test(el.textContent) ? new Error("네이버 지도 인증 실패 (콘솔에서 Dynamic Map 이용 신청·서비스 URL 확인)") : null);
@@ -106,7 +108,7 @@ const RouteMaps = (() => {
     const fit = () => { map.relayout(); map.setBounds(bounds, 8, 8, 8, 8); };
     fit();
     setTimeout(fit, 400);
-    fits[el.id] = fit; maps[el.id] = map; watchResize(el, fit);
+    fits[el.id] = fit; maps[el.id] = map; kinds[el.id] = "kakao"; watchResize(el, fit);
   }
 
   // ---- 티맵 (Tmapv2 지도 SDK: appKey, 지도 API 이용 신청 필요) ----
@@ -136,7 +138,7 @@ const RouteMaps = (() => {
     const fit = () => { map.fitBounds(bounds); };
     fit();
     setTimeout(fit, 400);
-    fits[el.id] = fit; maps[el.id] = map; watchResize(el, fit);
+    fits[el.id] = fit; maps[el.id] = map; kinds[el.id] = "tmap"; watchResize(el, fit);
   }
 
   // ---- 대체: Leaflet + OpenStreetMap ----
@@ -155,8 +157,40 @@ const RouteMaps = (() => {
     const [sw, ne] = paddedCorners(all);
     const fit = () => { map.invalidateSize(); map.fitBounds(L.latLngBounds([sw, ne]), { padding: [8, 8] }); };
     fit();
-    fits[el.id] = fit; maps[el.id] = map; watchResize(el, fit);
+    fits[el.id] = fit; maps[el.id] = map; kinds[el.id] = "leaflet"; watchResize(el, fit);
     leaflets.push(map);
+  }
+
+  // ---- 구간 강조: 해당 구간만 흰 테두리 + 상태 색으로 굵게 덧그린다 ----
+  function clearHighlight(appId) {
+    const id = "map-" + appId;
+    (hl[id] || []).forEach((x) => {
+      try { kinds[id] === "leaflet" ? maps[id].removeLayer(x) : x.setMap(null); } catch (_) {}
+    });
+    hl[id] = [];
+  }
+  function highlight(appId, pts, color) {
+    clearHighlight(appId);
+    const id = "map-" + appId, map = maps[id], kind = kinds[id];
+    if (!map || !kind || !pts || pts.length < 2) return;
+    const lines = [];
+    if (kind === "naver") {
+      const path = pts.map((p) => new naver.maps.LatLng(p[0], p[1]));
+      lines.push(new naver.maps.Polyline({ map, path, strokeColor: "#ffffff", strokeWeight: 13, strokeOpacity: 0.95, zIndex: 50 }));
+      lines.push(new naver.maps.Polyline({ map, path, strokeColor: color, strokeWeight: 7, strokeOpacity: 1, zIndex: 51 }));
+    } else if (kind === "kakao") {
+      const path = pts.map((p) => new kakao.maps.LatLng(p[0], p[1]));
+      lines.push(new kakao.maps.Polyline({ map, path, strokeColor: "#ffffff", strokeWeight: 13, strokeOpacity: 0.95, zIndex: 50 }));
+      lines.push(new kakao.maps.Polyline({ map, path, strokeColor: color, strokeWeight: 7, strokeOpacity: 1, zIndex: 51 }));
+    } else if (kind === "tmap") {
+      const path = pts.map((p) => new Tmapv2.LatLng(p[0], p[1]));
+      lines.push(new Tmapv2.Polyline({ map, path, strokeColor: "#ffffff", strokeWeight: 13, strokeOpacity: 0.95 }));
+      lines.push(new Tmapv2.Polyline({ map, path, strokeColor: color, strokeWeight: 7, strokeOpacity: 1 }));
+    } else {
+      lines.push(L.polyline(pts, { color: "#ffffff", weight: 13, opacity: 0.95 }).addTo(map));
+      lines.push(L.polyline(pts, { color, weight: 7, opacity: 1 }).addTo(map));
+    }
+    hl[id] = lines;
   }
 
   const renderers = { naver: renderNaver, kakao: renderKakao, tmap: renderTmap };
@@ -164,6 +198,7 @@ const RouteMaps = (() => {
   return {
     init(config) { cfg = config || {}; },
     reset() {
+      for (const k of Object.keys(hl)) delete hl[k];
       leaflets.splice(0).forEach((m) => m.remove());
       observers.splice(0).forEach((o) => o.disconnect());
       for (const k of Object.keys(fits)) delete fits[k];
@@ -172,6 +207,8 @@ const RouteMaps = (() => {
     // 경로 전체 보기: 사용자가 확대·이동한 뒤 처음 배율로 되돌린다 (appId 없으면 전부)
     fit(appId) { (appId ? [appId] : Object.keys(fits).map((k) => k.replace(/^map-/, ""))).forEach((id) => fits["map-" + id]?.()); },
     instance(appId) { return maps["map-" + appId]; },
+    highlight,
+    clearHighlight,
     // 앱 자체 지도로 그리고 { fallback, reason }을 돌려줌. 실패하면 Leaflet으로 대체
     async draw(appId, el, path, colors, names) {
       const render = renderers[appId];

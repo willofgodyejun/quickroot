@@ -216,8 +216,9 @@ h1{font-weight:700;letter-spacing:-.025em}
 .steps[open] summary::after{transform:rotate(-135deg) translateY(-1px)}
 .steps summary:focus-visible{outline:2px solid var(--a1);outline-offset:2px;border-radius:4px}
 .steplist{list-style:none;margin:0;padding:0;font-size:13px}
-.steplist li{display:flex;justify-content:space-between;align-items:baseline;gap:12px;padding:6px 0;border-bottom:1px solid var(--line)}
+.steplist li{cursor:pointer;display:flex;justify-content:space-between;align-items:baseline;gap:12px;padding:6px 0;border-bottom:1px solid var(--line)}
 .steplist li:last-child{border-bottom:0}
+.steplist li:hover,.steplist li.hl{background:color-mix(in srgb,var(--a1) 12%,transparent)}
 .steplist .sn{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--ink)}
 .steplist .sn i{font-style:normal;color:var(--muted);margin-left:4px}
 .steplist .ss{flex:none;color:var(--muted);font-variant-numeric:tabular-nums}
@@ -633,7 +634,7 @@ const OPEN_STEPS={}; // 앱별로 펼침 상태를 기억 (비교를 다시 해�
 function stepsList(r,appId){
   const st=r&&r.steps;
   if(!st||!st.length)return"";
-  const rows=st.map(s=>`<li><span class="sn">${esc(s.road)} <i>${s.km}km</i></span><span class="ss"><b class="stt stt-${s.st}">${STATE_WORD[s.st]||STATE_WORD.none}</b> ${s.min<1?"1분 미만":`${s.min}분`}</span></li>`).join("");
+  const rows=st.map((s,i)=>`<li data-app="${appId}" data-i="${i}"><span class="sn">${esc(s.road)} <i>${s.km}km</i></span><span class="ss"><b class="stt stt-${s.st}">${STATE_WORD[s.st]||STATE_WORD.none}</b> ${s.min<1?"1분 미만":`${s.min}분`}</span></li>`).join("");
   return`<details class="steps" data-app="${appId}"${OPEN_STEPS[appId]?" open":""}><summary><span>구간별 도로 현황</span><span class="cnt">${st.length}개 구간</span></summary><ul class="steplist" aria-label="구간별 교통 현황">${rows}</ul></details>`;
 }
 function card(app,r,ctx,best){
@@ -873,8 +874,36 @@ document.querySelectorAll(".tab").forEach(b=>b.addEventListener("click",()=>{
   document.querySelectorAll(".tab").forEach(t=>{const on=t===b;t.classList.toggle("on",on);t.setAttribute("aria-selected",on)});
   run();
 }));
+// 구간 행에 커서를 올리거나(마우스) 탭하면(터치) 지도에서 그 구간만 강조
+let lastPointer="mouse";
+function stepColor(k){return getComputedStyle(document.documentElement).getPropertyValue(`--${k}`).trim()||"#888"}
+function showStep(li){
+  const appId=li.dataset.app,r=LAST&&LAST.results[appId],st=r&&r.steps&&r.steps[Number(li.dataset.i)];
+  if(!st||!st.pi||!r.path)return;
+  const all=r.path.flatMap(s=>s.pts);
+  RouteMaps.highlight(appId,all.slice(st.pi[0],Math.min(st.pi[1]+1,all.length)),stepColor(st.st));
+  li.parentElement.querySelectorAll("li.hl").forEach(x=>x.classList.remove("hl"));
+  li.classList.add("hl");
+}
+function hideStep(li){RouteMaps.clearHighlight(li.dataset.app);li.classList.remove("hl")}
+$("grid").addEventListener("pointerdown",ev=>{lastPointer=ev.pointerType||"mouse"},true);
+$("grid").addEventListener("pointerover",ev=>{
+  if(ev.pointerType!=="mouse")return;
+  const li=ev.target.closest(".steplist li");if(li)showStep(li);
+});
+$("grid").addEventListener("pointerout",ev=>{
+  if(ev.pointerType!=="mouse")return;
+  const li=ev.target.closest(".steplist li");
+  if(li&&!li.contains(ev.relatedTarget))hideStep(li);
+});
+$("grid").addEventListener("click",ev=>{
+  if(lastPointer==="mouse")return; // 마우스는 올리는 동작으로 처리. 터치는 탭할 때마다 켜고 끈다
+  const li=ev.target.closest(".steplist li");
+  if(!li)return;
+  li.classList.contains("hl")?hideStep(li):showStep(li);
+});
 // 도로 현황 펼침 상태 기억 (details의 toggle 이벤트는 버블링되지 않아 캡처로 받는다)
-$("grid").addEventListener("toggle",ev=>{const d=ev.target;if(d.classList&&d.classList.contains("steps"))OPEN_STEPS[d.dataset.app]=d.open},true);
+$("grid").addEventListener("toggle",ev=>{const d=ev.target;if(d.classList&&d.classList.contains("steps")){OPEN_STEPS[d.dataset.app]=d.open;if(!d.open)RouteMaps.clearHighlight(d.dataset.app)}},true);
 $("grid").addEventListener("click",ev=>{const b=ev.target.closest(".fitbtn");if(b)RouteMaps.fit(b.dataset.fit)});
 $("tPlus").addEventListener("click",()=>{shiftTime(30);run()});
 $("tPlus60").addEventListener("click",()=>{shiftTime(60);run()});

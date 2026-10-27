@@ -48,3 +48,14 @@ test("네이버: guide 시간을 구간에 배분하고, guide가 없으면 길�
   assert.equal(Math.round(noGuide[0] + noGuide[1]), 600);   // 합은 전체 시간
   assert.ok(noGuide[1] > noGuide[0]);                       // 느린 구간이 더 오래 걸림
 });
+
+test("구간 단계가 지도 경로의 점 번호 범위(pi)를 합쳐서 갖는다", () => {
+  const steps = buildSteps([
+    { name: "자유로", dist: 5000, sec: 300, st: "ok", pi: [0, 10] },
+    { name: "자유로", dist: 5000, sec: 300, st: "ok", pi: [10, 25] },
+    { name: "", dist: 100, sec: 10, st: "ok" },                       // 점 정보 없는 구간은 범위에 영향 없음
+    { name: "강변북로", dist: 8000, sec: 600, st: "slow", pi: [25, 40] },
+  ]);
+  assert.deepEqual(steps.map((s) => s.pi), [[0, 25], [25, 40]]);
+  assert.equal(buildSteps([{ name: "a", dist: 1000, sec: 60, st: "ok" }])[0].pi, null);
+});
