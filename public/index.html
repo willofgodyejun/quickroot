@@ -83,11 +83,11 @@ h1{font-size:40px;font-weight:800;margin:0;text-align:center;text-wrap:balance;l
 .arrive{font-size:13px;color:var(--muted)}
 .stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;font-size:12px;color:var(--muted)}
 .stats b{display:block;font-family:var(--font-num);font-size:15px;color:var(--ink);font-variant-numeric:tabular-nums}
-.strip{position:relative;display:flex;height:24px;border-radius:4px;overflow:hidden;background:var(--line)}
+.strip{position:relative;display:flex;height:14px;border-radius:4px;overflow:hidden;background:var(--line)}
 .strip>span{display:block;height:100%;min-width:0}
-.strip-label{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;gap:4px;padding:0 6px;pointer-events:none}
-.strip-label b{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:700;color:#fff;background:rgba(15,23,32,.72);padding:1px 6px;border-radius:99px;white-space:nowrap}
-.strip-label i{display:inline-block;width:7px;height:7px;border-radius:50%}
+.strip-label{display:flex;flex-wrap:wrap;gap:4px 14px;margin-top:8px}
+.strip-label b{display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:600;color:var(--ink);white-space:nowrap}
+.strip-label i{display:inline-block;width:8px;height:8px;border-radius:50%}
 .ratio{display:flex;flex-wrap:wrap;gap:10px;font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums;margin-top:6px}
 .route{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:6px;font-size:13px}
 .route li{display:flex;gap:8px;align-items:center;min-width:0}
@@ -193,7 +193,7 @@ h1{font-weight:700;letter-spacing:-.025em}
 .tag.live{border-color:transparent;background:color-mix(in srgb,var(--ok) 16%,transparent);color:#248a3d}
 .pill{background:#248a3d;color:#fff}
 .eta{letter-spacing:-.03em}
-.strip{height:26px;border-radius:9px}
+.strip{height:14px;border-radius:7px}
 .map{border:0;border-radius:16px;box-shadow:0 0 0 1px var(--line)}
 .map-off{border-radius:16px}
 .open{color:var(--a1);font-weight:500}
@@ -295,7 +295,7 @@ h1{font-weight:700;letter-spacing:-.025em}
 [data-theme="cyber"] .pill{background:#39ff88;color:#04140a;border-radius:4px;box-shadow:0 0 12px rgba(57,255,136,.55)}
 [data-theme="cyber"] .eta{color:#fff;text-shadow:0 0 10px rgba(0,240,255,.5)}
 [data-theme="cyber"] .strip{border-radius:3px;box-shadow:0 0 0 1px rgba(0,240,255,.25)}
-[data-theme="cyber"] .strip-label b{background:rgba(7,4,15,.82);border:1px solid rgba(0,240,255,.35)}
+[data-theme="cyber"] .strip-label b{color:var(--ink)}
 [data-theme="cyber"] .map{border-radius:4px;box-shadow:0 0 0 1px rgba(0,240,255,.45),0 0 16px rgba(0,240,255,.18)}
 [data-theme="cyber"] .open,[data-theme="cyber"] .fitbtn,[data-theme="cyber"] .linkbtn{color:#00f0ff}
 [data-theme="cyber"] .legend,[data-theme="cyber"] .foot{color:#8f8bb8}
@@ -615,7 +615,7 @@ function stripHtml(r,pc){
   const parts=["ok","slow","jam","none"].filter(k=>pc(k)>0||k==="ok"&&r.strip.length===0).map(k=>`<b class="p-${k}"><i style="background:${STC[k]}"></i>${STN[k]} ${pc(k)}%</b>`);
   const summary=`원활 ${pc("ok")}%, 서행 ${pc("slow")}%, 정체 ${pc("jam")}%${pc("none")?`, 정보 없음 ${pc("none")}%`:""}`;
   const cells=runs.map(run=>`<span style="flex:${run.w};background:${STC[run.st]}"></span>`).join("");
-  return `<div class="strip" role="img" aria-label="정체 현황: ${summary}" title="${summary}">${cells}<div class="strip-label">${parts.join("")}</div></div>`;
+  return `<div class="stripwrap"><div class="strip" role="img" aria-label="정체 현황: ${summary}" title="${summary}">${cells}</div><div class="strip-label">${parts.join("")}</div></div>`;
 }
 
 // 분기점(도로가 바뀌는 곳)마다 한 줄: 왼쪽에 도로명(길이), 오른쪽에 교통 현황(상태 · 소요시간)
