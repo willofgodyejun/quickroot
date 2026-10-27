@@ -208,6 +208,12 @@ h1{font-weight:700;letter-spacing:-.025em}
 .fuelnote{display:flex;align-items:center;gap:10px;font-size:12px;color:var(--muted);margin:8px 0 0}
 .linkbtn{flex:none;font:inherit;font-size:12px;font-weight:600;border:0;background:transparent;color:var(--a1);cursor:pointer;padding:0}
 .fuelnote[hidden]{display:none}
+.steps summary{display:flex;align-items:center;justify-content:space-between;gap:10px;cursor:pointer;list-style:none;padding:8px 0;font-size:13px;font-weight:600;color:var(--ink);border-top:1px solid var(--line)}
+.steps summary::-webkit-details-marker{display:none}
+.steps summary .cnt{margin-left:auto;font-weight:400;color:var(--muted)}
+.steps summary::after{content:"";width:8px;height:8px;border-right:2px solid var(--muted);border-bottom:2px solid var(--muted);transform:rotate(45deg) translateY(-2px);transition:transform .15s}
+.steps[open] summary::after{transform:rotate(-135deg) translateY(-1px)}
+.steps summary:focus-visible{outline:2px solid var(--a1);outline-offset:2px;border-radius:4px}
 .steplist{list-style:none;margin:0;padding:0;font-size:13px}
 .steplist li{display:flex;justify-content:space-between;align-items:baseline;gap:12px;padding:6px 0;border-bottom:1px solid var(--line)}
 .steplist li:last-child{border-bottom:0}
@@ -620,11 +626,12 @@ function stripHtml(r,pc){
 
 // 분기점(도로가 바뀌는 곳)마다 한 줄: 왼쪽에 도로명(길이), 오른쪽에 교통 현황(상태 · 소요시간)
 const STATE_WORD={ok:"원활",slow:"서행",jam:"정체",none:"정보 없음"};
-function stepsList(r){
+const OPEN_STEPS={}; // 앱별로 펼침 상태를 기억 (비교를 다시 해도 유지)
+function stepsList(r,appId){
   const st=r&&r.steps;
   if(!st||!st.length)return"";
   const rows=st.map(s=>`<li><span class="sn">${esc(s.road)} <i>${s.km}km</i></span><span class="ss"><b class="stt stt-${s.st}">${STATE_WORD[s.st]||STATE_WORD.none}</b> ${s.min<1?"1분 미만":`${s.min}분`}</span></li>`).join("");
-  return`<ul class="steplist" aria-label="구간별 교통 현황">${rows}</ul>`;
+  return`<details class="steps" data-app="${appId}"${OPEN_STEPS[appId]?" open":""}><summary><span>구간별 도로 현황</span><span class="cnt">${st.length}개 구간</span></summary><ul class="steplist" aria-label="구간별 교통 현황">${rows}</ul></details>`;
 }
 function card(app,r,ctx,best){
   const ref=ctx.future&&app.id==="naver"; // 네이버는 출발 시각 미지원
@@ -640,7 +647,7 @@ function card(app,r,ctx,best){
    <div class="stats"><div>거리<b>${r.dist.toFixed(1)}km</b></div><div>통행료<b>${won(r.toll)}</b></div><div>${FUELS[F.fuel].cost}<b>${won(fuel(r.dist))}</b></div></div>
    ${stripHtml(r,pc)}
    ${r.path&&r.path.length?`<div class="map" id="map-${app.id}" role="img" aria-label="${app.name} 경로 지도"></div>`:`<div class="map-off">샘플 값이라 지도는 실시간 연동 후 표시돼요</div>`}
-   ${stepsList(r)}
+   ${stepsList(r,app.id)}
    <div class="maprow">${r.path&&r.path.length?`<button type="button" class="fitbtn" data-fit="${app.id}">경로 전체 보기</button>`:"<span></span>"}${link}</div>`;
 }
 
@@ -863,6 +870,8 @@ document.querySelectorAll(".tab").forEach(b=>b.addEventListener("click",()=>{
   document.querySelectorAll(".tab").forEach(t=>{const on=t===b;t.classList.toggle("on",on);t.setAttribute("aria-selected",on)});
   run();
 }));
+// 도로 현황 펼침 상태 기억 (details의 toggle 이벤트는 버블링되지 않아 캡처로 받는다)
+$("grid").addEventListener("toggle",ev=>{const d=ev.target;if(d.classList&&d.classList.contains("steps"))OPEN_STEPS[d.dataset.app]=d.open},true);
 $("grid").addEventListener("click",ev=>{const b=ev.target.closest(".fitbtn");if(b)RouteMaps.fit(b.dataset.fit)});
 $("tPlus").addEventListener("click",()=>{shiftTime(30);run()});
 $("tPlus60").addEventListener("click",()=>{shiftTime(60);run()});
