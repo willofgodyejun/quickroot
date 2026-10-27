@@ -161,7 +161,7 @@ const RouteMaps = (() => {
     leaflets.push(map);
   }
 
-  // ---- 구간 강조: 해당 구간만 흰 테두리 + 상태 색으로 굵게 덧그린다 ----
+  // ---- 구간 강조: 해당 구간만 검은 테두리 + 상태 색으로 굵게 덧그린다 (밝은 지도 위에서 잘 보이게) ----
   function clearHighlight(appId) {
     const id = "map-" + appId;
     (hl[id] || []).forEach((x) => {
@@ -176,18 +176,18 @@ const RouteMaps = (() => {
     const lines = [];
     if (kind === "naver") {
       const path = pts.map((p) => new naver.maps.LatLng(p[0], p[1]));
-      lines.push(new naver.maps.Polyline({ map, path, strokeColor: "#ffffff", strokeWeight: 13, strokeOpacity: 0.95, zIndex: 50 }));
+      lines.push(new naver.maps.Polyline({ map, path, strokeColor: "#0a0a0a", strokeWeight: 13, strokeOpacity: 0.92, zIndex: 50 }));
       lines.push(new naver.maps.Polyline({ map, path, strokeColor: color, strokeWeight: 7, strokeOpacity: 1, zIndex: 51 }));
     } else if (kind === "kakao") {
       const path = pts.map((p) => new kakao.maps.LatLng(p[0], p[1]));
-      lines.push(new kakao.maps.Polyline({ map, path, strokeColor: "#ffffff", strokeWeight: 13, strokeOpacity: 0.95, zIndex: 50 }));
+      lines.push(new kakao.maps.Polyline({ map, path, strokeColor: "#0a0a0a", strokeWeight: 13, strokeOpacity: 0.92, zIndex: 50 }));
       lines.push(new kakao.maps.Polyline({ map, path, strokeColor: color, strokeWeight: 7, strokeOpacity: 1, zIndex: 51 }));
     } else if (kind === "tmap") {
       const path = pts.map((p) => new Tmapv2.LatLng(p[0], p[1]));
-      lines.push(new Tmapv2.Polyline({ map, path, strokeColor: "#ffffff", strokeWeight: 13, strokeOpacity: 0.95 }));
+      lines.push(new Tmapv2.Polyline({ map, path, strokeColor: "#0a0a0a", strokeWeight: 13, strokeOpacity: 0.92 }));
       lines.push(new Tmapv2.Polyline({ map, path, strokeColor: color, strokeWeight: 7, strokeOpacity: 1 }));
     } else {
-      lines.push(L.polyline(pts, { color: "#ffffff", weight: 13, opacity: 0.95 }).addTo(map));
+      lines.push(L.polyline(pts, { color: "#0a0a0a", weight: 13, opacity: 0.92 }).addTo(map));
       lines.push(L.polyline(pts, { color, weight: 7, opacity: 1 }).addTo(map));
     }
     hl[id] = lines;
