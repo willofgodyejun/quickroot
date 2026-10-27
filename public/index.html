@@ -16,6 +16,7 @@
   --sign:#ffffff; --sign-ink:#1d1d1f;
   --ok:#34c759; --slow:#ff9f0a; --jam:#ff3b30; --none:#c7c7cc;
   --a1:#0071e3; --a2:#af52de; --a3:#30b0c7; --err:#d70015;
+  --c-kakao:#ffd54a; --c-naver:#03c75a; --c-tmap:#6cc5f5; /* 앱 대표색: 카드의 동그라미와 1등 하이라이트 공용 */
   --font-body:"IBM Plex Sans KR",system-ui,-apple-system,"Apple SD Gothic Neo","Malgun Gothic",sans-serif;
   --font-num:var(--font-body); /* 숫자도 본문과 같은 글꼴로 통일 (자릿수 정렬은 tabular-nums) */
   color-scheme:light;
@@ -61,9 +62,9 @@ h1{font-size:40px;font-weight:800;margin:0;text-align:center;text-wrap:balance;l
 .swap:focus-visible,.go:focus-visible,a:focus-visible{outline:3px solid #ffd54a;outline-offset:2px}
 .summary{display:flex;flex-wrap:wrap;gap:8px 20px;align-items:baseline}
 .summary strong{flex:1 0 100%;display:flex;flex-direction:column;gap:8px;font-size:17px}
-.best-name.best-kakao{background:#ffd54a;color:#15202b}
-.best-name.best-naver{background:#03c75a;color:#0a1f12}
-.best-name.best-tmap{background:#6cc5f5;color:#0a2233}
+.best-name.best-kakao{background:var(--c-kakao);color:#15202b}
+.best-name.best-naver{background:var(--c-naver);color:#0a1f12}
+.best-name.best-tmap{background:var(--c-tmap);color:#0a2233}
 .sum-route{font-size:15px;font-weight:600;color:var(--muted)}
 .sum-verdict{display:block;line-height:1.5}
 .best-name{display:inline-block;font-size:28px;font-weight:800;line-height:1.25;padding:0 .35em;margin:0 2px;border-radius:8px;background:#ffd54a;color:#15202b;letter-spacing:-.01em;box-shadow:0 2px 0 rgba(0,0,0,.15)}
@@ -294,9 +295,11 @@ h1{font-weight:700;letter-spacing:-.025em}
 /* 요약·카드 구성요소 */
 [data-theme="cyber"] .sum-route{color:#8f8bb8}
 [data-theme="cyber"] .best-name{border-radius:4px;box-shadow:0 0 18px currentColor;color:#07040f}
-[data-theme="cyber"] .best-name.best-kakao{background:#fcee09;box-shadow:0 0 20px rgba(252,238,9,.6)}
-[data-theme="cyber"] .best-name.best-naver{background:#39ff88;color:#04140a;box-shadow:0 0 20px rgba(57,255,136,.6)}
-[data-theme="cyber"] .best-name.best-tmap{background:#00f0ff;color:#031418;box-shadow:0 0 20px rgba(0,240,255,.6)}
+[data-theme="cyber"] .best-name.best-kakao{box-shadow:0 0 20px rgba(252,238,9,.6)}
+[data-theme="cyber"] .best-name.best-naver{color:#04140a;box-shadow:0 0 20px rgba(57,255,136,.6)}
+[data-theme="cyber"] .best-name.best-tmap{color:#031418;box-shadow:0 0 20px rgba(0,240,255,.6)}
+:root[data-theme="cyber"]{--c-kakao:#fcee09;--c-naver:#39ff88;--c-tmap:#00f0ff}
+[data-theme="cyber"] .dot{box-shadow:0 0 8px currentColor}
 [data-theme="cyber"] .tag.live{background:rgba(57,255,136,.12);color:#39ff88;border:1px solid rgba(57,255,136,.45)}
 [data-theme="cyber"] .pill{background:#39ff88;color:#04140a;border-radius:4px;box-shadow:0 0 12px rgba(57,255,136,.55)}
 [data-theme="cyber"] .eta{color:#fff;text-shadow:0 0 10px rgba(0,240,255,.5)}
@@ -470,18 +473,18 @@ document.addEventListener("click",ev=>{
   ev.preventDefault();openNative(a);
 });
 const APPS=[
- {id:"naver",name:"네이버지도",color:"var(--a1)",circ:1.30,bias:0.00,links:c=>{
+ {id:"naver",name:"네이버지도",color:"var(--c-naver)",circ:1.30,bias:0.00,links:c=>{
     if(!(c.o&&c.d))return {web:`https://map.naver.com/p/search/${encodeURIComponent(c.e)}`};
     const nm=p=>encodeURIComponent(p.name);
     return {
       // 웹: 출발·도착이 채워진 자동차 길찾기. 모바일: 네이버지도 앱을 먼저 열고, 안 열리면 웹으로
       web:`https://map.naver.com/p/directions/${c.o.x},${c.o.y},${nm(c.o)}/${c.d.x},${c.d.y},${nm(c.d)}/-/car`,
       app:`nmap://route/car?slat=${c.o.y}&slng=${c.o.x}&sname=${nm(c.o)}&dlat=${c.d.y}&dlng=${c.d.x}&dname=${nm(c.d)}&appname=quickroot`}}},
- {id:"kakao",name:"카카오맵",color:"var(--a2)",circ:1.27,bias:0.03,links:c=>{
+ {id:"kakao",name:"카카오맵",color:"var(--c-kakao)",circ:1.27,bias:0.03,links:c=>{
     if(!(c.o&&c.d))return {web:`https://map.kakao.com/?sName=${encodeURIComponent(c.s)}&eName=${encodeURIComponent(c.e)}`};
     // 카카오 공식 길찾기 링크: 모바일에서는 앱으로, 앱이 없으면 웹으로 이어짐
     return {web:`https://map.kakao.com/link/by/car/${encodeURIComponent(c.o.name)},${c.o.y},${c.o.x}/${encodeURIComponent(c.d.name)},${c.d.y},${c.d.x}`}}},
- {id:"tmap",name:"티맵",color:"var(--a3)",circ:1.33,bias:-0.05,links:c=>{
+ {id:"tmap",name:"티맵",color:"var(--c-tmap)",circ:1.33,bias:-0.05,links:c=>{
     // 티맵은 웹 길찾기 주소가 없어 모바일(좁은 화면 포함)에서만 버튼을 보이고, 앱이 없으면 스토어로
     if(!(isMobile()||narrowScreen())||!(c.o&&c.d))return null;
     const nm=p=>encodeURIComponent(p.name);
@@ -637,7 +640,7 @@ function card(app,r,ctx,best){
   const ref=ctx.future&&app.id==="naver"; // 네이버는 출발 시각 미지원
   const L=app.links(ctx);
   const link=L?`<a class="open" href="${L.web}" target="_blank" rel="noopener"${L.app?` data-app="${L.app}"`:""}>${app.name}에서 열기 ↗</a>`:`<span class="open off">티맵은 모바일에서 열 수 있어요</span>`;
-  const head=`<div class="head"><span class="dot" style="background:${app.color}"></span><span class="name">${app.name}</span>
+  const head=`<div class="head"><span class="dot" style="background:${app.color};color:${app.color}"></span><span class="name">${app.name}</span>
     ${ref?'<span class="tag ref">현재 교통 기준</span>':`<span class="tag ${r&&r.source!=="sample"?"live":""}">${r&&r.source!=="sample"?"실시간":"샘플"}</span>`}${best?'<span class="pill">최단 시간</span>':""}</div>${ref&&r&&r!=="loading"&&!r.error?'<p class="refnote">출발 시각 지정을 지원하지 않아 지금 교통 기준이에요. 순위에는 넣지 않았어요.</p>':""}`;
   if(r==="loading") return head+`<p class="msg">경로를 불러오는 중…</p>`;
   if(r&&r.error) return head+`<p class="msg err">${esc(r.error)}</p>${link}`;
