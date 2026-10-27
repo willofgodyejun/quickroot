@@ -903,7 +903,7 @@ $("grid").addEventListener("click",ev=>{
   li.classList.contains("hl")?hideStep(li):showStep(li);
 });
 // 도로 현황 펼침 상태 기억 (details의 toggle 이벤트는 버블링되지 않아 캡처로 받는다)
-$("grid").addEventListener("toggle",ev=>{const d=ev.target;if(d.classList&&d.classList.contains("steps")){OPEN_STEPS[d.dataset.app]=d.open;if(!d.open)RouteMaps.clearHighlight(d.dataset.app)}},true);
+$("grid").addEventListener("toggle",ev=>{const d=ev.target;if(d.classList&&d.classList.contains("steps")){OPEN_STEPS[d.dataset.app]=d.open;if(!d.open){RouteMaps.clearHighlight(d.dataset.app);d.querySelectorAll("li.hl").forEach(x=>x.classList.remove("hl"))}}},true);
 $("grid").addEventListener("click",ev=>{const b=ev.target.closest(".fitbtn");if(b)RouteMaps.fit(b.dataset.fit)});
 $("tPlus").addEventListener("click",()=>{shiftTime(30);run()});
 $("tPlus60").addEventListener("click",()=>{shiftTime(60);run()});
